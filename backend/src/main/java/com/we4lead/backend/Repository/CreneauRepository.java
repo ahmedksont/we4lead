@@ -6,5 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface CreneauRepository extends JpaRepository<Creneau, String> {
-    List<Creneau> findByMedecinId(String medecinId);
+    List<Creneau> findByMedecin_Id(String medecinId);
+
 }
