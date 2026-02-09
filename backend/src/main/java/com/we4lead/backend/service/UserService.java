@@ -49,17 +49,23 @@ public class UserService {
         String id = jwt.getSubject();
         String email = jwt.getClaim("email");
 
-        return userRepository.findById(id)
-                .orElseGet(() -> userRepository.save(
-                        new User(
-                                id,
-                                email,
-                                null,
-                                null,
-                                null,
-                                Role.ETUDIANT
-                        )
-                ));
+        User user = userRepository.findById(id).orElse(null);
+
+        if (user == null) {
+            // check by email
+            user = userRepository.findByEmail(email).orElse(null);
+        }
+
+        if (user == null) {
+            // user does not exist yet, create
+            user = new User();
+            user.setId(id);
+            user.setEmail(email);
+            user.setRole(Role.ETUDIANT);
+            user = userRepository.save(user);
+        }
+
+        return user;
     }
 
     // ================= PROFILE =================
