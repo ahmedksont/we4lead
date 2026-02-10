@@ -26,7 +26,7 @@ public class PublicUserController {
 
     @GetMapping("/medecins")
     public List<MedecinResponse> getAllMedecins() {
-        return userService.getMedecinsWithCreneaux();
+        return userService.getMedecinsWithAppointments();
     }
 
     /* ================= UNIVERSITIES ================= */

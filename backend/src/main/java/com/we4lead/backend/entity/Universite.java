@@ -1,6 +1,8 @@
 package com.we4lead.backend.entity;
 
 import jakarta.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "universite")
@@ -21,6 +23,11 @@ public class Universite {
     private Integer nbEtudiants;
     private String horaire;
     private String logoPath; // store file path
+
+    // ====== Link to medecins ======
+    @ManyToMany(mappedBy = "universites")
+    private Set<User> medecins = new HashSet<>();
+
 
     public Universite() {}
 
@@ -56,4 +63,7 @@ public class Universite {
 
     public String getLogoPath() { return logoPath; }
     public void setLogoPath(String logoPath) { this.logoPath = logoPath; }
+
+    public Set<User> getMedecins() { return medecins; }
+    public void setMedecins(Set<User> medecins) { this.medecins = medecins; }
 }

@@ -1,9 +1,11 @@
 package com.we4lead.backend.service;
 
 import com.we4lead.backend.Repository.CreneauRepository;
+import com.we4lead.backend.Repository.RdvRepository;
 import com.we4lead.backend.Repository.UserRepository;
 import com.we4lead.backend.dto.CreneauResponse;
 import com.we4lead.backend.dto.MedecinResponse;
+import com.we4lead.backend.dto.RdvResponse;
 import com.we4lead.backend.dto.UserUpdateRequest;
 import com.we4lead.backend.entity.Role;
 import com.we4lead.backend.entity.User;
@@ -23,14 +25,17 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final CreneauRepository creneauRepository;
+    private final RdvRepository rdvRepository;  // ✅ Inject RdvRepository
 
     private final String uploadDir = "uploads";
 
     public UserService(UserRepository userRepository,
-                       CreneauRepository creneauRepository) {
+                       CreneauRepository creneauRepository,
+                       RdvRepository rdvRepository) {  // ✅ constructor
 
         this.userRepository = userRepository;
         this.creneauRepository = creneauRepository;
+        this.rdvRepository = rdvRepository;
 
         Path path = Paths.get(uploadDir);
         if (!Files.exists(path)) {
@@ -52,12 +57,10 @@ public class UserService {
         User user = userRepository.findById(id).orElse(null);
 
         if (user == null) {
-            // check by email
             user = userRepository.findByEmail(email).orElse(null);
         }
 
         if (user == null) {
-            // user does not exist yet, create
             user = new User();
             user.setId(id);
             user.setEmail(email);
@@ -112,22 +115,22 @@ public class UserService {
         return userRepository.findByRole(Role.MEDECIN);
     }
 
-    public List<MedecinResponse> getMedecinsWithCreneaux() {
-
+    public List<MedecinResponse> getMedecinsWithAppointments() {
         List<User> medecins = userRepository.findByRole(Role.MEDECIN);
 
         return medecins.stream().map(m -> {
 
-            List<CreneauResponse> creneaux =
-                    creneauRepository.findByMedecin_Id(m.getId())
-                            .stream()
-                            .map(c -> new CreneauResponse(
-                                    c.getId(),
-                                    c.getJour(),
-                                    c.getDebut(),
-                                    c.getFin()
-                            ))
-                            .toList();
+            // Creneaux (working hours)
+            List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(m.getId())
+                    .stream()
+                    .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
+                    .toList();
+
+            // Appointments (rdvs)
+            List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
+                    .stream()
+                    .map(r -> new RdvResponse(r.getId(), r.getDate(), r.getHeure(), r.getEtudiant().getNom()))
+                    .toList();
 
             return new MedecinResponse(
                     m.getId(),
@@ -135,7 +138,8 @@ public class UserService {
                     m.getPrenom(),
                     m.getEmail(),
                     m.getPhotoPath() != null ? "/users/me/photo" : null,
-                    creneaux
+                    creneaux,
+                    rdvs
             );
 
         }).toList();

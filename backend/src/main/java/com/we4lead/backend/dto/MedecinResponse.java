@@ -9,7 +9,9 @@ public class MedecinResponse {
     private String prenom;
     private String email;
     private String photoUrl;
-    private List<CreneauResponse> creneaux;
+
+    private List<CreneauResponse> creneaux; // working hours
+    private List<RdvResponse> rdvs; // appointments
 
     public MedecinResponse(
             String id,
@@ -17,7 +19,8 @@ public class MedecinResponse {
             String prenom,
             String email,
             String photoUrl,
-            List<CreneauResponse> creneaux
+            List<CreneauResponse> creneaux,
+            List<RdvResponse> rdvs
     ) {
         this.id = id;
         this.nom = nom;
@@ -25,12 +28,15 @@ public class MedecinResponse {
         this.email = email;
         this.photoUrl = photoUrl;
         this.creneaux = creneaux;
+        this.rdvs = rdvs;
     }
 
+    // Getters
     public String getId() { return id; }
     public String getNom() { return nom; }
     public String getPrenom() { return prenom; }
     public String getEmail() { return email; }
     public String getPhotoUrl() { return photoUrl; }
     public List<CreneauResponse> getCreneaux() { return creneaux; }
+    public List<RdvResponse> getRdvs() { return rdvs; }
 }
