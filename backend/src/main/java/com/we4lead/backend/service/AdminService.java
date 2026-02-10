@@ -50,8 +50,6 @@ public class AdminService {
         user.setRole(Role.MEDECIN);
 
         User savedUser = userRepository.save(user);
-
-        // Send Supabase invite
         supabaseAuthService.inviteUser(savedUser.getEmail());
 
         return savedUser;

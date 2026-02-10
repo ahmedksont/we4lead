@@ -1,5 +1,6 @@
 package com.we4lead.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -25,6 +26,7 @@ public class Universite {
     private String logoPath; // store file path
 
     // ====== Link to medecins ======
+    @JsonIgnore
     @ManyToMany(mappedBy = "universites")
     private Set<User> medecins = new HashSet<>();
 

@@ -5,7 +5,8 @@ public class UserCreateRequest {
     private String nom;
     private String prenom;
     private String telephone;
-    private String role; // "ADMIN", "MEDECIN", etc.
+    private String role;
+    private Long universiteId;
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
@@ -21,4 +22,6 @@ public class UserCreateRequest {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    public Long getUniversiteId() { return universiteId; }
+    public void setUniversiteId(Long universiteId) { this.universiteId = universiteId; }
 }
