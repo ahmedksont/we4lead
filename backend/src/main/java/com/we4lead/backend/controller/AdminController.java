@@ -1,5 +1,6 @@
 package com.we4lead.backend.controller;
 
+import com.we4lead.backend.dto.EtudiantResponse;
 import com.we4lead.backend.dto.MedecinResponse;
 import com.we4lead.backend.dto.UserCreateRequest;
 import com.we4lead.backend.entity.User;
@@ -64,5 +65,47 @@ public class AdminController {
     @GetMapping("/medecins/universite/{universiteId}")
     public List<MedecinResponse> getMedecinsByUniversite(@PathVariable Long universiteId) {
         return adminService.getMedecinsByUniversiteId(universiteId);
+    }
+    // ================= ETUDIANTS CRUD =================
+
+    @PostMapping("/etudiants")
+    public ResponseEntity<Map<String, Object>> createEtudiant(@RequestBody UserCreateRequest request) {
+        // Validate university ID
+        if (request.getUniversiteId() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "L'université est obligatoire"));
+        }
+
+        User etudiant = adminService.createEtudiant(request);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Étudiant créé avec succès et invitation envoyée");
+        response.put("etudiant", etudiant);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/etudiants")
+    public List<EtudiantResponse> getAllEtudiants() {
+        return adminService.getAllEtudiants();
+    }
+
+    @GetMapping("/etudiants/{id}")
+    public User getEtudiant(@PathVariable String id) {
+        return adminService.getEtudiantById(id);
+    }
+
+    @GetMapping("/etudiants/universite/{universiteId}")
+    public List<EtudiantResponse> getEtudiantsByUniversite(@PathVariable Long universiteId) {
+        return adminService.getEtudiantsByUniversiteId(universiteId);
+    }
+
+    @PutMapping("/etudiants/{id}")
+    public User updateEtudiant(@PathVariable String id, @RequestBody UserCreateRequest request) {
+        return adminService.updateEtudiant(id, request);
+    }
+
+    @DeleteMapping("/etudiants/{id}")
+    public void deleteEtudiant(@PathVariable String id) {
+        adminService.deleteEtudiant(id);
     }
 }

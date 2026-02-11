@@ -21,4 +21,14 @@ public interface RdvRepository extends JpaRepository<Rdv, String> {
     @Transactional
     @Query("DELETE FROM Rdv r WHERE r.medecin.id = :medecinId")
     void deleteByMedecin_Id(@Param("medecinId") String medecinId);
+
+
+    long countByEtudiant_Id(String etudiantId);
+
+
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Rdv r WHERE r.etudiant.id = :etudiantId")
+    void deleteByEtudiant_Id(@Param("etudiantId") String etudiantId);
 }

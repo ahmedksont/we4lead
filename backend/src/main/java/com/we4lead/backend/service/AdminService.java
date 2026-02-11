@@ -5,11 +5,7 @@ import com.we4lead.backend.Repository.RdvRepository;
 import com.we4lead.backend.Repository.UniversiteRepository;
 import com.we4lead.backend.Repository.UserRepository;
 import com.we4lead.backend.SupabaseAuthService;
-import com.we4lead.backend.dto.CreneauResponse;
-import com.we4lead.backend.dto.MedecinResponse;
-import com.we4lead.backend.dto.RdvResponse;
-import com.we4lead.backend.dto.UniversiteResponse;
-import com.we4lead.backend.dto.UserCreateRequest;
+import com.we4lead.backend.dto.*;
 import com.we4lead.backend.entity.Role;
 import com.we4lead.backend.entity.Universite;
 import com.we4lead.backend.entity.User;
@@ -220,5 +216,145 @@ public class AdminService {
                     rdvs
             );
         }).toList();
+    }
+    @Transactional
+    public User createEtudiant(UserCreateRequest request) {
+        // Validate university ID
+        if (request.getUniversiteId() == null) {
+            throw new IllegalArgumentException("L'université est obligatoire pour créer un étudiant");
+        }
+
+        // Find the university
+        Universite universite = universiteRepository.findById(request.getUniversiteId())
+                .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
+
+        // Create new etudiant user
+        User user = new User();
+        user.setId(UUID.randomUUID().toString());
+        user.setEmail(request.getEmail());
+        user.setNom(request.getNom());
+        user.setPrenom(request.getPrenom());
+        user.setTelephone(request.getTelephone());
+        user.setRole(Role.ETUDIANT);
+
+        // Assign university to etudiant (many-to-one)
+        user.setUniversite(universite);
+
+        // Save the user
+        User savedUser = userRepository.save(user);
+
+        // Invite the user via Supabase
+        supabaseAuthService.inviteUser(savedUser.getEmail());
+
+        return savedUser;
+    }
+
+    public List<EtudiantResponse> getAllEtudiants() {
+        List<User> etudiants = userRepository.findByRole(Role.ETUDIANT);
+
+        return etudiants.stream().map(e -> {
+            UniversiteResponse universiteResponse = null;
+            if (e.getUniversite() != null) {
+                universiteResponse = new UniversiteResponse(
+                        e.getUniversite().getId(),
+                        e.getUniversite().getNom(),
+                        e.getUniversite().getVille(),
+                        e.getUniversite().getAdresse(),
+                        e.getUniversite().getTelephone(),
+                        e.getUniversite().getNbEtudiants(),
+                        e.getUniversite().getHoraire(),
+                        e.getUniversite().getLogoPath(),
+                        e.getUniversite().getCode()
+                );
+            }
+
+            return new EtudiantResponse(
+                    e.getId(),
+                    e.getNom(),
+                    e.getPrenom(),
+                    e.getEmail(),
+                    e.getTelephone(),
+                    e.getPhotoPath() != null ? "/users/me/photo" : null,
+                    universiteResponse
+            );
+        }).toList();
+    }
+
+    public List<EtudiantResponse> getEtudiantsByUniversiteId(Long universiteId) {
+        // Verify university exists
+        Universite universite = universiteRepository.findById(universiteId)
+                .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
+
+        // Get all etudiants for this university
+        List<User> etudiants = userRepository.findEtudiantsByUniversiteId(universiteId, Role.ETUDIANT);
+
+        return etudiants.stream().map(e -> {
+            UniversiteResponse universiteResponse = new UniversiteResponse(
+                    e.getUniversite().getId(),
+                    e.getUniversite().getNom(),
+                    e.getUniversite().getVille(),
+                    e.getUniversite().getAdresse(),
+                    e.getUniversite().getTelephone(),
+                    e.getUniversite().getNbEtudiants(),
+                    e.getUniversite().getHoraire(),
+                    e.getUniversite().getLogoPath(),
+                    e.getUniversite().getCode()
+            );
+
+            return new EtudiantResponse(
+                    e.getId(),
+                    e.getNom(),
+                    e.getPrenom(),
+                    e.getEmail(),
+                    e.getTelephone(),
+                    e.getPhotoPath() != null ? "/users/me/photo" : null,
+                    universiteResponse
+            );
+        }).toList();
+    }
+
+    public User getEtudiantById(String id) {
+        return userRepository.findById(id)
+                .filter(user -> user.getRole() == Role.ETUDIANT)
+                .orElseThrow(() -> new RuntimeException("Étudiant non trouvé avec l'ID : " + id));
+    }
+
+    @Transactional
+    public User updateEtudiant(String id, UserCreateRequest request) {
+        User user = getEtudiantById(id);
+
+        if (request.getNom() != null) {
+            user.setNom(request.getNom());
+        }
+        if (request.getPrenom() != null) {
+            user.setPrenom(request.getPrenom());
+        }
+        if (request.getTelephone() != null) {
+            user.setTelephone(request.getTelephone());
+        }
+
+        // Update university if provided
+        if (request.getUniversiteId() != null) {
+            Universite universite = universiteRepository.findById(request.getUniversiteId())
+                    .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
+            user.setUniversite(universite);
+        }
+
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public void deleteEtudiant(String id) {
+        User etudiant = getEtudiantById(id);
+
+        // Check if student has appointments
+        long appointmentsCount = rdvRepository.countByEtudiant_Id(id);
+
+        if (appointmentsCount > 0) {
+            // Delete related appointments first
+            rdvRepository.deleteByEtudiant_Id(id);
+        }
+
+        userRepository.delete(etudiant);
     }
 }
