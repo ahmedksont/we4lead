@@ -14,7 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/admin")
-@PreAuthorize("hasAuthority('ADMIN')") // Only ADMIN can access
+@PreAuthorize("hasAuthority('ADMIN')")
 public class AdminController {
 
     private final AdminService adminService;
@@ -23,20 +23,21 @@ public class AdminController {
         this.adminService = adminService;
     }
 
-    // ===== Medecins CRUD =====
-
-    // ===== CREATE MEDICIN + INVITE =====
     @PostMapping("/medecins")
     public ResponseEntity<Map<String, Object>> createMedecin(@RequestBody UserCreateRequest request) {
+        // Validate university ID
+        if (request.getUniversiteId() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "L'université est obligatoire"));
+        }
+
         User medecin = adminService.createMedecin(request);
 
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "Medecin created and invite sent");
+        response.put("message", "Médecin créé avec succès et invitation envoyée");
         response.put("medecin", medecin);
 
         return ResponseEntity.ok(response);
     }
-
 
     @GetMapping("/medecins")
     public List<MedecinResponse> getAllMedecins() {
@@ -53,7 +54,6 @@ public class AdminController {
         return adminService.updateMedecin(id, request);
     }
 
-    // ===== Delete with optional forceCascade =====
     @DeleteMapping("/medecins/{id}")
     public void deleteMedecin(
             @PathVariable String id,
@@ -61,5 +61,4 @@ public class AdminController {
     ) {
         adminService.deleteMedecin(id, forceCascade);
     }
-
 }

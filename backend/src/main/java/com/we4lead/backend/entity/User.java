@@ -1,5 +1,6 @@
 package com.we4lead.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -23,6 +24,8 @@ public class User {
 
     private String photoPath;
 
+    // For medecins - many-to-many with universities
+    @JsonIgnore
     @ManyToMany
     @JoinTable(
             name = "medecin_universite",
@@ -31,8 +34,11 @@ public class User {
     )
     private Set<Universite> universites = new HashSet<>();
 
-    public Set<Universite> getUniversites() { return universites; }
-    public void setUniversites(Set<Universite> universites) { this.universites = universites; }
+    // For admins - one-to-many relationship (an admin belongs to one university)
+    @ManyToOne
+    @JoinColumn(name = "universite_id")
+    private Universite universite;
+
     public User() {}
 
     public User(String id, String email, String nom, String prenom, String telephone, Role role) {
@@ -66,4 +72,9 @@ public class User {
     public String getPhotoPath() { return photoPath; }
     public void setPhotoPath(String photoPath) { this.photoPath = photoPath; }
 
+    public Set<Universite> getUniversites() { return universites; }
+    public void setUniversites(Set<Universite> universites) { this.universites = universites; }
+
+    public Universite getUniversite() { return universite; }
+    public void setUniversite(Universite universite) { this.universite = universite; }
 }

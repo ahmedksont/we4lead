@@ -8,6 +8,7 @@ import com.we4lead.backend.entity.Universite;
 import com.we4lead.backend.entity.User;
 import com.we4lead.backend.Repository.UniversiteRepository;
 import com.we4lead.backend.Repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -107,10 +108,11 @@ public class SuperAdminService {
             uni.setLogoPath("/universites/logos/" + filename);
         }
     }
-
+    @Transactional
     public User createAdmin(UserCreateRequest request) {
         Universite universite = universiteRepository.findById(request.getUniversiteId())
                 .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
+
         User user = new User();
         user.setId(UUID.randomUUID().toString());
         user.setEmail(request.getEmail());
@@ -118,16 +120,12 @@ public class SuperAdminService {
         user.setPrenom(request.getPrenom());
         user.setTelephone(request.getTelephone());
         user.setRole(Role.ADMIN);
-        user.getUniversites().add(universite);
+        user.setUniversite(universite);
         User savedUser = userRepository.save(user);
 
         supabaseAuthService.inviteUser(savedUser.getEmail());
 
         return savedUser;
-    }
-
-    public List<User> getAllAdmins() {
-        return userRepository.findByRole(Role.ADMIN);
     }
 
     public User getAdminById(String id) {
@@ -154,5 +152,8 @@ public class SuperAdminService {
     public void deleteAdmin(String id) {
         User admin = getAdminById(id);
         userRepository.delete(admin);
+    }
+    public List<User> getAllAdmins() {
+        return userRepository.findByRoleWithUniversity(Role.ADMIN);
     }
 }

@@ -2,45 +2,59 @@ package com.we4lead.backend.service;
 
 import com.we4lead.backend.Repository.CreneauRepository;
 import com.we4lead.backend.Repository.RdvRepository;
+import com.we4lead.backend.Repository.UniversiteRepository;
 import com.we4lead.backend.Repository.UserRepository;
 import com.we4lead.backend.SupabaseAuthService;
 import com.we4lead.backend.dto.CreneauResponse;
 import com.we4lead.backend.dto.MedecinResponse;
 import com.we4lead.backend.dto.RdvResponse;
+import com.we4lead.backend.dto.UniversiteResponse;
 import com.we4lead.backend.dto.UserCreateRequest;
 import com.we4lead.backend.entity.Role;
+import com.we4lead.backend.entity.Universite;
 import com.we4lead.backend.entity.User;
-import com.we4lead.backend.entity.Rdv;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class AdminService {
 
     private final UserRepository userRepository;
-    private final RdvRepository rdvRepository;
+    private final UniversiteRepository universiteRepository;
     private final CreneauRepository creneauRepository;
-    private final SupabaseAuthService supabaseAuthService; // <-- injected for invites
+    private final RdvRepository rdvRepository;
+    private final SupabaseAuthService supabaseAuthService;
 
     public AdminService(
             UserRepository userRepository,
-            RdvRepository rdvRepository,
+            UniversiteRepository universiteRepository,
             CreneauRepository creneauRepository,
-            SupabaseAuthService supabaseAuthService
-
-    ) {
+            RdvRepository rdvRepository,
+            SupabaseAuthService supabaseAuthService) {
         this.userRepository = userRepository;
-        this.rdvRepository = rdvRepository;
+        this.universiteRepository = universiteRepository;
         this.creneauRepository = creneauRepository;
+        this.rdvRepository = rdvRepository;
         this.supabaseAuthService = supabaseAuthService;
     }
 
-    // ===== CREATE MEDICIN & INVITE =====
     @Transactional
     public User createMedecin(UserCreateRequest request) {
+        // Validate university ID
+        if (request.getUniversiteId() == null) {
+            throw new IllegalArgumentException("L'université est obligatoire pour créer un médecin");
+        }
+
+        // Find the university
+        Universite universite = universiteRepository.findById(request.getUniversiteId())
+                .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
+
+        // Create new medicin user
         User user = new User();
         user.setId(UUID.randomUUID().toString());
         user.setEmail(request.getEmail());
@@ -49,79 +63,112 @@ public class AdminService {
         user.setTelephone(request.getTelephone());
         user.setRole(Role.MEDECIN);
 
+        // Assign university to medicin (many-to-many)
+        Set<Universite> universites = new HashSet<>();
+        universites.add(universite);
+        user.setUniversites(universites);
+
+        // Save the user
         User savedUser = userRepository.save(user);
+
+        // Invite the user via Supabase
         supabaseAuthService.inviteUser(savedUser.getEmail());
 
         return savedUser;
     }
 
-    // ===== READ ALL MEDICINS =====
     public List<MedecinResponse> getAllMedecins() {
         List<User> medecins = userRepository.findByRole(Role.MEDECIN);
 
-        return medecins.stream().map(medecin -> {
-            List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(medecin.getId())
+        return medecins.stream().map(m -> {
+            List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(m.getId())
                     .stream()
                     .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
                     .toList();
 
-            List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(medecin.getId())
+            List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
                     .stream()
-                    .map(r -> new RdvResponse(
-                            r.getId(),
-                            r.getDate(),
-                            r.getHeure(),
-                            r.getEtudiant() != null ? r.getEtudiant().getNom() : null
+                    .map(r -> new RdvResponse(r.getId(), r.getDate(), r.getHeure(),
+                            r.getEtudiant() != null ? r.getEtudiant().getNom() : null))
+                    .toList();
+
+            // Convert universities to UniversiteResponse records
+            List<UniversiteResponse> universiteResponses = m.getUniversites().stream()
+                    .map(u -> new UniversiteResponse(
+                            u.getId(),
+                            u.getNom(),
+                            u.getVille(),
+                            u.getAdresse(),
+                            u.getTelephone(),
+                            u.getNbEtudiants(),
+                            u.getHoraire(),
+                            u.getLogoPath(),
+                            u.getCode()
                     ))
                     .toList();
 
             return new MedecinResponse(
-                    medecin.getId(),
-                    medecin.getNom(),
-                    medecin.getPrenom(),
-                    medecin.getEmail(),
-                    medecin.getPhotoPath(),
+                    m.getId(),
+                    m.getNom(),
+                    m.getPrenom(),
+                    m.getEmail(),
+                    m.getPhotoPath() != null ? "/users/me/photo" : null,
+                    m.getTelephone(),
+                    universiteResponses,
                     creneaux,
                     rdvs
             );
         }).toList();
     }
 
-    // ===== READ ONE MEDICIN =====
     public User getMedecinById(String id) {
         return userRepository.findById(id)
-                .filter(u -> u.getRole() == Role.MEDECIN)
-                .orElseThrow(() -> new RuntimeException("Medecin not found"));
+                .filter(user -> user.getRole() == Role.MEDECIN)
+                .orElseThrow(() -> new RuntimeException("Médecin non trouvé avec l'ID : " + id));
     }
 
-    // ===== UPDATE MEDICIN =====
+    @Transactional
     public User updateMedecin(String id, UserCreateRequest request) {
         User user = getMedecinById(id);
-        user.setNom(request.getNom());
-        user.setPrenom(request.getPrenom());
-        user.setEmail(request.getEmail());
-        user.setTelephone(request.getTelephone());
+
+        if (request.getNom() != null) {
+            user.setNom(request.getNom());
+        }
+        if (request.getPrenom() != null) {
+            user.setPrenom(request.getPrenom());
+        }
+        if (request.getTelephone() != null) {
+            user.setTelephone(request.getTelephone());
+        }
+
+        // Update university if provided
+        if (request.getUniversiteId() != null) {
+            Universite universite = universiteRepository.findById(request.getUniversiteId())
+                    .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
+
+            Set<Universite> universites = new HashSet<>();
+            universites.add(universite);
+            user.setUniversites(universites);
+        }
+
         return userRepository.save(user);
     }
 
-    // ===== DELETE CHECK =====
-    public boolean canDeleteMedecin(String id) {
-        List<Rdv> rdvs = rdvRepository.findByMedecin_Id(id);
-        return rdvs.isEmpty();
-    }
-
-    // ===== DELETE MEDICIN =====
     @Transactional
-    public void deleteMedecin(String medecinId, boolean forceCascade) {
-        User medecin = getMedecinById(medecinId);
-        List<Rdv> rdvs = rdvRepository.findByMedecin_Id(medecinId);
+    public void deleteMedecin(String id, boolean forceCascade) {
+        User medecin = getMedecinById(id);
 
-        if (!forceCascade && !rdvs.isEmpty()) {
-            throw new RuntimeException("Impossible de supprimer : ce medecin a des rendez-vous !");
+        // Check if medicin has appointments
+        long appointmentsCount = rdvRepository.countByMedecin_Id(id);
+
+        if (appointmentsCount > 0 && !forceCascade) {
+            throw new RuntimeException("Ce médecin a " + appointmentsCount + " rendez-vous. Utilisez forceCascade=true pour supprimer quand même.");
         }
 
+        // Delete related entities
         if (forceCascade) {
-            rdvRepository.deleteAll(rdvs);
+            rdvRepository.deleteByMedecin_Id(id);
+            creneauRepository.deleteByMedecin_Id(id);
         }
 
         userRepository.delete(medecin);

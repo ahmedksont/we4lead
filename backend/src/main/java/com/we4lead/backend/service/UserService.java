@@ -6,6 +6,7 @@ import com.we4lead.backend.Repository.UserRepository;
 import com.we4lead.backend.dto.CreneauResponse;
 import com.we4lead.backend.dto.MedecinResponse;
 import com.we4lead.backend.dto.RdvResponse;
+import com.we4lead.backend.dto.UniversiteResponse;
 import com.we4lead.backend.dto.UserUpdateRequest;
 import com.we4lead.backend.entity.Role;
 import com.we4lead.backend.entity.User;
@@ -25,13 +26,13 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final CreneauRepository creneauRepository;
-    private final RdvRepository rdvRepository;  // ✅ Inject RdvRepository
+    private final RdvRepository rdvRepository;
 
     private final String uploadDir = "uploads";
 
     public UserService(UserRepository userRepository,
                        CreneauRepository creneauRepository,
-                       RdvRepository rdvRepository) {  // ✅ constructor
+                       RdvRepository rdvRepository) {
 
         this.userRepository = userRepository;
         this.creneauRepository = creneauRepository;
@@ -126,10 +127,29 @@ public class UserService {
                     .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
                     .toList();
 
-            // Appointments (rdvs)
+            // Appointments (rdvs) - Fixed null pointer exception
             List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
                     .stream()
-                    .map(r -> new RdvResponse(r.getId(), r.getDate(), r.getHeure(), r.getEtudiant().getNom()))
+                    .map(r -> new RdvResponse(
+                            r.getId(),
+                            r.getDate(),
+                            r.getHeure(),
+                            r.getEtudiant() != null ? r.getEtudiant().getNom() : null))
+                    .toList();
+
+            // Convert universities to UniversiteResponse
+            List<UniversiteResponse> universiteResponses = m.getUniversites().stream()
+                    .map(u -> new UniversiteResponse(
+                            u.getId(),
+                            u.getNom(),
+                            u.getVille(),
+                            u.getAdresse(),
+                            u.getTelephone(),
+                            u.getNbEtudiants(),
+                            u.getHoraire(),
+                            u.getLogoPath(),
+                            u.getCode()
+                    ))
                     .toList();
 
             return new MedecinResponse(
@@ -138,6 +158,8 @@ public class UserService {
                     m.getPrenom(),
                     m.getEmail(),
                     m.getPhotoPath() != null ? "/users/me/photo" : null,
+                    m.getTelephone(),
+                    universiteResponses,  // Added missing parameter
                     creneaux,
                     rdvs
             );
