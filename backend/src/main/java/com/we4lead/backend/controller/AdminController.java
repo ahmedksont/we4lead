@@ -61,4 +61,8 @@ public class AdminController {
     ) {
         adminService.deleteMedecin(id, forceCascade);
     }
+    @GetMapping("/medecins/universite/{universiteId}")
+    public List<MedecinResponse> getMedecinsByUniversite(@PathVariable Long universiteId) {
+        return adminService.getMedecinsByUniversiteId(universiteId);
+    }
 }

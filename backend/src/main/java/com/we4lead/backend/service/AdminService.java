@@ -173,4 +173,52 @@ public class AdminService {
 
         userRepository.delete(medecin);
     }
+    public List<MedecinResponse> getMedecinsByUniversiteId(Long universiteId) {
+        // Verify university exists
+        Universite universite = universiteRepository.findById(universiteId)
+                .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
+
+        // Get all medecins for this university
+        List<User> medecins = userRepository.findByUniversiteIdAndRole(universiteId, Role.MEDECIN);
+
+        return medecins.stream().map(m -> {
+            List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(m.getId())
+                    .stream()
+                    .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
+                    .toList();
+
+            List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
+                    .stream()
+                    .map(r -> new RdvResponse(r.getId(), r.getDate(), r.getHeure(),
+                            r.getEtudiant() != null ? r.getEtudiant().getNom() : null))
+                    .toList();
+
+            // Convert universities to UniversiteResponse
+            List<UniversiteResponse> universiteResponses = m.getUniversites().stream()
+                    .map(u -> new UniversiteResponse(
+                            u.getId(),
+                            u.getNom(),
+                            u.getVille(),
+                            u.getAdresse(),
+                            u.getTelephone(),
+                            u.getNbEtudiants(),
+                            u.getHoraire(),
+                            u.getLogoPath(),
+                            u.getCode()
+                    ))
+                    .toList();
+
+            return new MedecinResponse(
+                    m.getId(),
+                    m.getNom(),
+                    m.getPrenom(),
+                    m.getEmail(),
+                    m.getPhotoPath() != null ? "/users/me/photo" : null,
+                    m.getTelephone(),
+                    universiteResponses,
+                    creneaux,
+                    rdvs
+            );
+        }).toList();
+    }
 }
