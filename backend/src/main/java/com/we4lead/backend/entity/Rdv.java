@@ -19,6 +19,7 @@ public class Rdv {
     @ManyToOne
     @JoinColumn(name = "etudiant_id")
     private User etudiant;
+
     @Enumerated(EnumType.STRING)
     private RdvStatus status;
 
@@ -30,7 +31,9 @@ public class Rdv {
         this.heure = heure;
         this.medecin = medecin;
         this.etudiant = etudiant;
+        this.status = RdvStatus.CONFIRMED; // Default status
     }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -45,12 +48,7 @@ public class Rdv {
 
     public User getEtudiant() { return etudiant; }
     public void setEtudiant(User etudiant) { this.etudiant = etudiant; }
-    public RdvStatus getStatus() {
-        return status;
-    }
 
-    public void setStatus(RdvStatus status) {
-        this.status = status;
-    }
-
+    public RdvStatus getStatus() { return status; }
+    public void setStatus(RdvStatus status) { this.status = status; }
 }

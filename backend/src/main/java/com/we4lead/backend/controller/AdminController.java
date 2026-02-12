@@ -1,8 +1,7 @@
 package com.we4lead.backend.controller;
 
-import com.we4lead.backend.dto.EtudiantResponse;
-import com.we4lead.backend.dto.MedecinResponse;
-import com.we4lead.backend.dto.UserCreateRequest;
+import com.we4lead.backend.dto.*;
+import com.we4lead.backend.entity.Rdv;
 import com.we4lead.backend.entity.User;
 import com.we4lead.backend.service.AdminService;
 import org.springframework.http.ResponseEntity;
@@ -107,5 +106,116 @@ public class AdminController {
     @DeleteMapping("/etudiants/{id}")
     public void deleteEtudiant(@PathVariable String id) {
         adminService.deleteEtudiant(id);
+    }
+    // ================= RDV (APPOINTMENTS) CRUD =================
+
+    @PostMapping("/rdvs")
+    public ResponseEntity<Map<String, Object>> createRdv(@RequestBody RdvRequest request) {
+        try {
+            Rdv rdv = adminService.createRdv(request);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Rendez-vous créé avec succès");
+            response.put("rdv", rdv);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/rdvs/{rdvId}/assign/{etudiantId}")
+    public ResponseEntity<Map<String, Object>> assignEtudiantToRdv(
+            @PathVariable String rdvId,
+            @PathVariable String etudiantId) {
+        try {
+            Rdv rdv = adminService.assignEtudiantToRdv(rdvId, etudiantId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Étudiant assigné au rendez-vous avec succès");
+            response.put("rdv", rdv);
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/rdvs")
+    public List<RdvResponse> getAllRdvs() {
+        return adminService.getAllRdvs();
+    }
+
+    @GetMapping("/rdvs/{id}")
+    public ResponseEntity<?> getRdvById(@PathVariable String id) {
+        try {
+            RdvResponse rdv = adminService.getRdvById(id);
+            return ResponseEntity.ok(rdv);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/rdvs/{id}")
+    public ResponseEntity<?> updateRdv(@PathVariable String id, @RequestBody RdvUpdateRequest request) {
+        try {
+            Rdv updated = adminService.updateRdv(id, request);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            if (e instanceof IllegalArgumentException) {
+                return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            }
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/rdvs/{id}")
+    public ResponseEntity<?> deleteRdv(@PathVariable String id) {
+        try {
+            adminService.deleteRdv(id);
+            return ResponseEntity.ok(Map.of("message", "Rendez-vous supprimé avec succès"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/rdvs/universite/{universiteId}")
+    public ResponseEntity<?> getRdvsByUniversite(@PathVariable Long universiteId) {
+        try {
+            List<RdvResponse> rdvs = adminService.getRdvsByUniversiteId(universiteId);
+            return ResponseEntity.ok(rdvs);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/rdvs/medecin/{medecinId}")
+    public ResponseEntity<?> getRdvsByMedecin(@PathVariable String medecinId) {
+        try {
+            List<RdvResponse> rdvs = adminService.getRdvsByMedecinId(medecinId);
+            return ResponseEntity.ok(rdvs);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/rdvs/etudiant/{etudiantId}")
+    public ResponseEntity<?> getRdvsByEtudiant(@PathVariable String etudiantId) {
+        try {
+            List<RdvResponse> rdvs = adminService.getRdvsByEtudiantId(etudiantId);
+            return ResponseEntity.ok(rdvs);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/rdvs/status/{status}")
+    public ResponseEntity<?> getRdvsByStatus(@PathVariable String status) {
+        try {
+            List<RdvResponse> rdvs = adminService.getRdvsByStatus(status);
+            return ResponseEntity.ok(rdvs);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

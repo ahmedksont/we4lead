@@ -4,18 +4,25 @@ public class RdvResponse {
     private String id;
     private String date;
     private String heure;
-    private String etudiant;
+    private String status;
+    private MedecinResponse medecin;
+    private EtudiantResponse etudiant;
 
-    public RdvResponse(String id, String date, String heure, String etudiant) {
+    public RdvResponse(String id, String date, String heure, String status,
+                       MedecinResponse medecin, EtudiantResponse etudiant) {
         this.id = id;
         this.date = date;
         this.heure = heure;
+        this.status = status;
+        this.medecin = medecin;
         this.etudiant = etudiant;
     }
 
-    // getters
+    // Getters
     public String getId() { return id; }
     public String getDate() { return date; }
     public String getHeure() { return heure; }
-    public String getEtudiant() { return etudiant; }
+    public String getStatus() { return status; }
+    public MedecinResponse getMedecin() { return medecin; }
+    public EtudiantResponse getEtudiant() { return etudiant; }
 }

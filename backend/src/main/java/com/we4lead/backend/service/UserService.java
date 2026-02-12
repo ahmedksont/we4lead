@@ -8,6 +8,7 @@ import com.we4lead.backend.dto.MedecinResponse;
 import com.we4lead.backend.dto.RdvResponse;
 import com.we4lead.backend.dto.UniversiteResponse;
 import com.we4lead.backend.dto.UserUpdateRequest;
+import com.we4lead.backend.dto.EtudiantResponse;
 import com.we4lead.backend.entity.Role;
 import com.we4lead.backend.entity.User;
 import jakarta.transaction.Transactional;
@@ -127,14 +128,75 @@ public class UserService {
                     .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
                     .toList();
 
-            // Appointments (rdvs) - Fixed null pointer exception
+            // Appointments (rdvs) - UPDATED to use FULL RdvResponse constructor
             List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
                     .stream()
-                    .map(r -> new RdvResponse(
-                            r.getId(),
-                            r.getDate(),
-                            r.getHeure(),
-                            r.getEtudiant() != null ? r.getEtudiant().getNom() : null))
+                    .map(r -> {
+                        // Convert doctor universities
+                        List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
+                                .map(u -> new UniversiteResponse(
+                                        u.getId(),
+                                        u.getNom(),
+                                        u.getVille(),
+                                        u.getAdresse(),
+                                        u.getTelephone(),
+                                        u.getNbEtudiants(),
+                                        u.getHoraire(),
+                                        u.getLogoPath(),
+                                        u.getCode()
+                                ))
+                                .toList();
+
+                        // Create MedecinResponse for the RDV
+                        MedecinResponse rdvMedecinResponse = new MedecinResponse(
+                                r.getMedecin().getId(),
+                                r.getMedecin().getNom(),
+                                r.getMedecin().getPrenom(),
+                                r.getMedecin().getEmail(),
+                                r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
+                                r.getMedecin().getTelephone(),
+                                medecinUniversites,
+                                List.of(),
+                                List.of()
+                        );
+
+                        // Convert student university
+                        UniversiteResponse etudiantUniversite = null;
+                        if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
+                            etudiantUniversite = new UniversiteResponse(
+                                    r.getEtudiant().getUniversite().getId(),
+                                    r.getEtudiant().getUniversite().getNom(),
+                                    r.getEtudiant().getUniversite().getVille(),
+                                    r.getEtudiant().getUniversite().getAdresse(),
+                                    r.getEtudiant().getUniversite().getTelephone(),
+                                    r.getEtudiant().getUniversite().getNbEtudiants(),
+                                    r.getEtudiant().getUniversite().getHoraire(),
+                                    r.getEtudiant().getUniversite().getLogoPath(),
+                                    r.getEtudiant().getUniversite().getCode()
+                            );
+                        }
+
+                        // Create EtudiantResponse for the RDV
+                        EtudiantResponse etudiantResponse = r.getEtudiant() != null ?
+                                new EtudiantResponse(
+                                        r.getEtudiant().getId(),
+                                        r.getEtudiant().getNom(),
+                                        r.getEtudiant().getPrenom(),
+                                        r.getEtudiant().getEmail(),
+                                        r.getEtudiant().getTelephone(),
+                                        r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
+                                        etudiantUniversite
+                                ) : null;
+
+                        return new RdvResponse(
+                                r.getId(),
+                                r.getDate(),
+                                r.getHeure(),
+                                r.getStatus() != null ? r.getStatus().name() : "CONFIRMED",
+                                rdvMedecinResponse,
+                                etudiantResponse
+                        );
+                    })
                     .toList();
 
             // Convert universities to UniversiteResponse
@@ -159,7 +221,7 @@ public class UserService {
                     m.getEmail(),
                     m.getPhotoPath() != null ? "/users/me/photo" : null,
                     m.getTelephone(),
-                    universiteResponses,  // Added missing parameter
+                    universiteResponses,
                     creneaux,
                     rdvs
             );
