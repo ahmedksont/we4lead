@@ -3,6 +3,7 @@ package com.we4lead.backend.controller;
 import com.we4lead.backend.dto.CreneauRequest;
 import com.we4lead.backend.dto.CreneauResponse;
 import com.we4lead.backend.dto.CreneauUpdateRequest;
+import com.we4lead.backend.dto.UniversiteResponse;
 import com.we4lead.backend.entity.Rdv;
 import com.we4lead.backend.service.MedecinService;
 import org.springframework.http.HttpStatus;
@@ -129,6 +130,47 @@ public class MedecinController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Erreur lors de la récupération des rendez-vous"));
+        }
+    }
+    @GetMapping("/universities")
+    public ResponseEntity<?> getMyUniversities(@AuthenticationPrincipal Jwt jwt) {
+        try {
+            List<UniversiteResponse> universities = medecinService.getMyUniversities(jwt);
+            return ResponseEntity.ok(universities);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de la récupération des universités"));
+        }
+    }
+
+    @GetMapping("/{doctorId}/universities")
+    public ResponseEntity<?> getUniversitiesByDoctorId(@PathVariable String doctorId) {
+        try {
+            List<UniversiteResponse> universities = medecinService.getUniversitiesByDoctorId(doctorId);
+            return ResponseEntity.ok(universities);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de la récupération des universités"));
+        }
+    }
+
+    @GetMapping("/{doctorId}/university")
+    public ResponseEntity<?> getFirstUniversityByDoctorId(@PathVariable String doctorId) {
+        try {
+            UniversiteResponse university = medecinService.getFirstUniversityByDoctorId(doctorId);
+            return ResponseEntity.ok(university);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de la récupération de l'université"));
         }
     }
 

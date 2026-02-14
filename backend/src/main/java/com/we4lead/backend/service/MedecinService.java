@@ -1,11 +1,11 @@
 package com.we4lead.backend.service;
 
+import com.we4lead.backend.Repository.UniversiteRepository;
 import com.we4lead.backend.dto.CreneauRequest;
 import com.we4lead.backend.dto.CreneauResponse;
 import com.we4lead.backend.dto.CreneauUpdateRequest;
-import com.we4lead.backend.entity.Creneau;
-import com.we4lead.backend.entity.Rdv;
-import com.we4lead.backend.entity.User;
+import com.we4lead.backend.dto.UniversiteResponse;
+import com.we4lead.backend.entity.*;
 import com.we4lead.backend.Repository.CreneauRepository;
 import com.we4lead.backend.Repository.RdvRepository;
 import com.we4lead.backend.Repository.UserRepository;
@@ -29,6 +29,7 @@ public class MedecinService {
     private final CreneauRepository creneauRepository;
     private final RdvRepository rdvRepository;
     private final UserRepository userRepository;
+    private final UniversiteRepository universiteRepository;
 
     private static final Pattern TIME_PATTERN = Pattern.compile("^([01]\\d|2[0-3]):[0-5]\\d$");
     private static final Set<String> VALID_DAYS = Set.of(
@@ -195,5 +196,71 @@ public class MedecinService {
     public List<Rdv> getMyRdvs(Jwt jwt) {
         String medecinId = jwt.getSubject();
         return rdvRepository.findByMedecin_Id(medecinId);
+    }
+    public List<UniversiteResponse> getMyUniversities(Jwt jwt) {
+        String doctorId = jwt.getSubject();
+
+        // Verify the user is a doctor
+        User doctor = userRepository.findById(doctorId)
+                .orElseThrow(() -> new IllegalArgumentException("Médecin non trouvé"));
+
+        if (doctor.getRole() != Role.MEDECIN) {
+            throw new IllegalArgumentException("L'utilisateur n'est pas un médecin");
+        }
+
+        List<Universite> universities = universiteRepository.findByMedecinId(doctorId);
+
+        return universities.stream()
+                .map(this::toUniversiteResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<UniversiteResponse> getUniversitiesByDoctorId(String doctorId) {
+        // Verify the doctor exists
+        User doctor = userRepository.findById(doctorId)
+                .orElseThrow(() -> new IllegalArgumentException("Médecin non trouvé"));
+
+        if (doctor.getRole() != Role.MEDECIN) {
+            throw new IllegalArgumentException("L'utilisateur avec l'ID " + doctorId + " n'est pas un médecin");
+        }
+
+        List<Universite> universities = universiteRepository.findByMedecinId(doctorId);
+
+        if (universities.isEmpty()) {
+            throw new IllegalArgumentException("Aucune université trouvée pour ce médecin");
+        }
+
+        return universities.stream()
+                .map(this::toUniversiteResponse)
+                .collect(Collectors.toList());
+    }
+
+    public UniversiteResponse getFirstUniversityByDoctorId(String doctorId) {
+        // Verify the doctor exists
+        User doctor = userRepository.findById(doctorId)
+                .orElseThrow(() -> new IllegalArgumentException("Médecin non trouvé"));
+
+        if (doctor.getRole() != Role.MEDECIN) {
+            throw new IllegalArgumentException("L'utilisateur avec l'ID " + doctorId + " n'est pas un médecin");
+        }
+
+        Universite university = universiteRepository.findFirstByMedecinId(doctorId)
+                .orElseThrow(() -> new IllegalArgumentException("Aucune université trouvée pour ce médecin"));
+
+        return toUniversiteResponse(university);
+    }
+
+    private UniversiteResponse toUniversiteResponse(Universite universite) {
+        return new UniversiteResponse(
+                universite.getId(),
+                universite.getNom(),
+                universite.getVille(),
+                universite.getAdresse(),
+                universite.getTelephone(),
+                universite.getNbEtudiants(),
+                universite.getHoraire(),
+                universite.getLogoPath(),
+                universite.getCode()
+        );
     }
 }
