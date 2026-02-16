@@ -86,10 +86,8 @@ public class EtudiantService {
     public RdvResponse bookRdv(Jwt jwt, RdvRequest request) {
         String etudiantId = jwt.getSubject();
 
-        // Validate request
         validateRdvRequest(request);
 
-        // Get student and doctor
         User etudiant = userRepository.findById(etudiantId)
                 .orElseThrow(() -> new RuntimeException("Étudiant non trouvé"));
 

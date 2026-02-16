@@ -117,115 +117,125 @@ public class UserService {
         return userRepository.findByRole(Role.MEDECIN);
     }
 
+    /**
+     * Maps a User (medecin) to MedecinResponse
+     * This method can be reused across the application
+     */
+    public MedecinResponse mapToMedecinResponse(User medecin) {
+        // Get doctor's creneaux (working hours)
+        List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(medecin.getId())
+                .stream()
+                .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
+                .toList();
+
+        // Get doctor's appointments (rdvs)
+        List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(medecin.getId())
+                .stream()
+                .map(this::mapToRdvResponse)
+                .toList();
+
+        // Convert doctor's universities to UniversiteResponse
+        List<UniversiteResponse> universiteResponses = medecin.getUniversites().stream()
+                .map(u -> new UniversiteResponse(
+                        u.getId(),
+                        u.getNom(),
+                        u.getVille(),
+                        u.getAdresse(),
+                        u.getTelephone(),
+                        u.getNbEtudiants(),
+                        u.getHoraire(),
+                        u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
+                        u.getCode()
+                ))
+                .toList();
+
+        return new MedecinResponse(
+                medecin.getId(),
+                medecin.getNom(),
+                medecin.getPrenom(),
+                medecin.getEmail(),
+                medecin.getPhotoPath() != null ? "/users/me/photo" : null,
+                medecin.getTelephone(),
+                universiteResponses,
+                creneaux,
+                rdvs
+        );
+    }
+
+    /**
+     * Maps an Rdv to RdvResponse
+     */
+    private RdvResponse mapToRdvResponse(com.we4lead.backend.entity.Rdv r) {
+        // Convert doctor universities
+        List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
+                .map(u -> new UniversiteResponse(
+                        u.getId(),
+                        u.getNom(),
+                        u.getVille(),
+                        u.getAdresse(),
+                        u.getTelephone(),
+                        u.getNbEtudiants(),
+                        u.getHoraire(),
+                        u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
+                        u.getCode()
+                ))
+                .toList();
+
+        // Create MedecinResponse for the RDV
+        MedecinResponse rdvMedecinResponse = new MedecinResponse(
+                r.getMedecin().getId(),
+                r.getMedecin().getNom(),
+                r.getMedecin().getPrenom(),
+                r.getMedecin().getEmail(),
+                r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
+                r.getMedecin().getTelephone(),
+                medecinUniversites,
+                List.of(),
+                List.of()
+        );
+
+        // Convert student university
+        UniversiteResponse etudiantUniversite = null;
+        if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
+            etudiantUniversite = new UniversiteResponse(
+                    r.getEtudiant().getUniversite().getId(),
+                    r.getEtudiant().getUniversite().getNom(),
+                    r.getEtudiant().getUniversite().getVille(),
+                    r.getEtudiant().getUniversite().getAdresse(),
+                    r.getEtudiant().getUniversite().getTelephone(),
+                    r.getEtudiant().getUniversite().getNbEtudiants(),
+                    r.getEtudiant().getUniversite().getHoraire(),
+                    r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,
+                    r.getEtudiant().getUniversite().getCode()
+            );
+        }
+
+        // Create EtudiantResponse for the RDV
+        EtudiantResponse etudiantResponse = r.getEtudiant() != null ?
+                new EtudiantResponse(
+                        r.getEtudiant().getId(),
+                        r.getEtudiant().getNom(),
+                        r.getEtudiant().getPrenom(),
+                        r.getEtudiant().getEmail(),
+                        r.getEtudiant().getTelephone(),
+                        r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
+                        etudiantUniversite
+                ) : null;
+
+        return new RdvResponse(
+                r.getId(),
+                r.getDate(),
+                r.getHeure(),
+                r.getStatus() != null ? r.getStatus().name() : "CONFIRMED",
+                rdvMedecinResponse,
+                etudiantResponse
+        );
+    }
+
     public List<MedecinResponse> getMedecinsWithAppointments() {
         List<User> medecins = userRepository.findByRole(Role.MEDECIN);
-
-        return medecins.stream().map(m -> {
-
-            // Creneaux (working hours)
-            List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(m.getId())
-                    .stream()
-                    .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
-                    .toList();
-
-            // Appointments (rdvs) - UPDATED to use FULL RdvResponse constructor
-            List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
-                    .stream()
-                    .map(r -> {
-                        // Convert doctor universities
-                        List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
-                                .map(u -> new UniversiteResponse(
-                                        u.getId(),
-                                        u.getNom(),
-                                        u.getVille(),
-                                        u.getAdresse(),
-                                        u.getTelephone(),
-                                        u.getNbEtudiants(),
-                                        u.getHoraire(),
-                                        u.getLogoPath(),
-                                        u.getCode()
-                                ))
-                                .toList();
-
-                        // Create MedecinResponse for the RDV
-                        MedecinResponse rdvMedecinResponse = new MedecinResponse(
-                                r.getMedecin().getId(),
-                                r.getMedecin().getNom(),
-                                r.getMedecin().getPrenom(),
-                                r.getMedecin().getEmail(),
-                                r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
-                                r.getMedecin().getTelephone(),
-                                medecinUniversites,
-                                List.of(),
-                                List.of()
-                        );
-
-                        // Convert student university
-                        UniversiteResponse etudiantUniversite = null;
-                        if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
-                            etudiantUniversite = new UniversiteResponse(
-                                    r.getEtudiant().getUniversite().getId(),
-                                    r.getEtudiant().getUniversite().getNom(),
-                                    r.getEtudiant().getUniversite().getVille(),
-                                    r.getEtudiant().getUniversite().getAdresse(),
-                                    r.getEtudiant().getUniversite().getTelephone(),
-                                    r.getEtudiant().getUniversite().getNbEtudiants(),
-                                    r.getEtudiant().getUniversite().getHoraire(),
-                                    r.getEtudiant().getUniversite().getLogoPath(),
-                                    r.getEtudiant().getUniversite().getCode()
-                            );
-                        }
-
-                        // Create EtudiantResponse for the RDV
-                        EtudiantResponse etudiantResponse = r.getEtudiant() != null ?
-                                new EtudiantResponse(
-                                        r.getEtudiant().getId(),
-                                        r.getEtudiant().getNom(),
-                                        r.getEtudiant().getPrenom(),
-                                        r.getEtudiant().getEmail(),
-                                        r.getEtudiant().getTelephone(),
-                                        r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                                        etudiantUniversite
-                                ) : null;
-
-                        return new RdvResponse(
-                                r.getId(),
-                                r.getDate(),
-                                r.getHeure(),
-                                r.getStatus() != null ? r.getStatus().name() : "CONFIRMED",
-                                rdvMedecinResponse,
-                                etudiantResponse
-                        );
-                    })
-                    .toList();
-
-            // Convert universities to UniversiteResponse
-            List<UniversiteResponse> universiteResponses = m.getUniversites().stream()
-                    .map(u -> new UniversiteResponse(
-                            u.getId(),
-                            u.getNom(),
-                            u.getVille(),
-                            u.getAdresse(),
-                            u.getTelephone(),
-                            u.getNbEtudiants(),
-                            u.getHoraire(),
-                            u.getLogoPath(),
-                            u.getCode()
-                    ))
-                    .toList();
-
-            return new MedecinResponse(
-                    m.getId(),
-                    m.getNom(),
-                    m.getPrenom(),
-                    m.getEmail(),
-                    m.getPhotoPath() != null ? "/users/me/photo" : null,
-                    m.getTelephone(),
-                    universiteResponses,
-                    creneaux,
-                    rdvs
-            );
-
-        }).toList();
+        return medecins.stream()
+                .map(this::mapToMedecinResponse)
+                .toList();
     }
 }
