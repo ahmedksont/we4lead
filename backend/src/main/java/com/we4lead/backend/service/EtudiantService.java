@@ -8,6 +8,7 @@ import com.we4lead.backend.entity.Universite;
 import com.we4lead.backend.Repository.RdvRepository;
 import com.we4lead.backend.Repository.UserRepository;
 import com.we4lead.backend.Repository.UniversiteRepository;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -355,5 +357,88 @@ public class EtudiantService {
                 medecinResponse,
                 etudiantResponse
         );
+    }
+    // Add this method to EtudiantService.java
+    public UniversiteResponse getMyUniversity(Jwt jwt) {
+        String etudiantId = jwt.getSubject();
+
+        User etudiant = userRepository.findById(etudiantId)
+                .orElseThrow(() -> new RuntimeException("Étudiant non trouvé"));
+
+        // Get the student's university (assuming a student can have multiple, we take the first)
+        if (etudiant.getUniversites() != null && !etudiant.getUniversites().isEmpty()) {
+            Universite uni = etudiant.getUniversites().iterator().next();
+            return new UniversiteResponse(
+                    uni.getId(),
+                    uni.getNom(),
+                    uni.getVille(),
+                    uni.getAdresse(),
+                    uni.getTelephone(),
+                    uni.getNbEtudiants(),
+                    uni.getHoraire(),
+                    uni.getLogoPath() != null ? "/uploads/" + uni.getLogoPath() : null,
+                    uni.getCode()
+            );
+        }
+
+        throw new RuntimeException("Aucune université trouvée pour cet étudiant");
+    }
+    // Add this method to EtudiantService.java
+    @Transactional
+    public UniversiteResponse assignUniversity(Jwt jwt, Long universityId) {
+        String etudiantId = jwt.getSubject();
+
+        // Find the student
+        User etudiant = userRepository.findById(etudiantId)
+                .orElseThrow(() -> new RuntimeException("Étudiant non trouvé"));
+
+        // Find the university
+        Universite university = universiteRepository.findById(universityId)
+                .orElseThrow(() -> new RuntimeException("Université non trouvée avec l'ID: " + universityId));
+
+        // Check if student already has this university
+        if (etudiant.getUniversites().contains(university)) {
+            throw new RuntimeException("L'étudiant est déjà associé à cette université");
+        }
+
+        // Assign university to student
+        etudiant.getUniversites().add(university);
+
+        // Save the updated student
+        userRepository.save(etudiant);
+
+        // Return the university response
+        return new UniversiteResponse(
+                university.getId(),
+                university.getNom(),
+                university.getVille(),
+                university.getAdresse(),
+                university.getTelephone(),
+                university.getNbEtudiants(),
+                university.getHoraire(),
+                university.getLogoPath() != null ? "/uploads/" + university.getLogoPath() : null,
+                university.getCode()
+        );
+    }
+
+    // Optional: Remove university from student
+    @Transactional
+    public ResponseEntity<?> removeUniversity(Jwt jwt, Long universityId) {
+        String etudiantId = jwt.getSubject();
+
+        User etudiant = userRepository.findById(etudiantId)
+                .orElseThrow(() -> new RuntimeException("Étudiant non trouvé"));
+
+        Universite university = universiteRepository.findById(universityId)
+                .orElseThrow(() -> new RuntimeException("Université non trouvée avec l'ID: " + universityId));
+
+        if (!etudiant.getUniversites().contains(university)) {
+            throw new RuntimeException("L'étudiant n'est pas associé à cette université");
+        }
+
+        etudiant.getUniversites().remove(university);
+        userRepository.save(etudiant);
+
+        return ResponseEntity.ok(Map.of("message", "Université retirée avec succès"));
     }
 }

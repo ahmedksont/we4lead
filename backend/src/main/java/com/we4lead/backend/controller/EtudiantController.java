@@ -1,8 +1,6 @@
 package com.we4lead.backend.controller;
 
-import com.we4lead.backend.dto.RdvRequest;
-import com.we4lead.backend.dto.RdvResponse;
-import com.we4lead.backend.dto.RdvUpdateRequest;
+import com.we4lead.backend.dto.*;
 import com.we4lead.backend.entity.Rdv;
 import com.we4lead.backend.service.EtudiantService;
 import org.springframework.http.HttpStatus;
@@ -142,6 +140,52 @@ public class EtudiantController {
         try {
             etudiantService.deleteRdv(jwt, rdvId);
             return ResponseEntity.ok(Map.of("message", "Rendez-vous supprimé avec succès"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+    // Add this to EtudiantController.java
+
+    @GetMapping("/university")
+    public ResponseEntity<?> getMyUniversity(@AuthenticationPrincipal Jwt jwt) {
+        try {
+            UniversiteResponse university = etudiantService.getMyUniversity(jwt);
+            return ResponseEntity.ok(university);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de la récupération de l'université"));
+        }
+    }
+    @PostMapping("/university/assign")
+    public ResponseEntity<?> assignUniversity(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody AssignUniversityRequest request) {
+        try {
+            UniversiteResponse university = etudiantService.assignUniversity(jwt, request.getUniversityId());
+            return ResponseEntity.ok(Map.of(
+                    "message", "Université assignée avec succès",
+                    "university", university
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de l'assignation de l'université"));
+        }
+    }
+
+    // Optional: Remove university from student
+    @DeleteMapping("/university/{universityId}")
+    public ResponseEntity<?> removeUniversity(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long universityId) {
+        try {
+            return etudiantService.removeUniversity(jwt, universityId);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", e.getMessage()));
