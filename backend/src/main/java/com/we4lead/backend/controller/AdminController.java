@@ -25,18 +25,40 @@ public class AdminController {
 
     @PostMapping("/medecins")
     public ResponseEntity<Map<String, Object>> createMedecin(@RequestBody UserCreateRequest request) {
-        // Validate university ID
+        // Validate required fields
         if (request.getUniversiteId() == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "L'université est obligatoire"));
         }
 
-        User medecin = adminService.createMedecin(request);
+        // Validate specialite for medecin
+        if (request.getSpecialite() == null || request.getSpecialite().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "La spécialité est obligatoire pour un médecin"));
+        }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Médecin créé avec succès et invitation envoyée");
-        response.put("medecin", medecin);
+        // Validate email
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "L'email est obligatoire"));
+        }
 
-        return ResponseEntity.ok(response);
+        // Validate nom and prenom
+        if (request.getNom() == null || request.getNom().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Le nom est obligatoire"));
+        }
+        if (request.getPrenom() == null || request.getPrenom().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Le prénom est obligatoire"));
+        }
+
+        try {
+            User medecin = adminService.createMedecin(request);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Médecin créé avec succès et invitation envoyée");
+            response.put("medecin", medecin);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/medecins")
@@ -61,10 +83,12 @@ public class AdminController {
     ) {
         adminService.deleteMedecin(id, forceCascade);
     }
+
     @GetMapping("/medecins/universite/{universiteId}")
     public List<MedecinResponse> getMedecinsByUniversite(@PathVariable Long universiteId) {
         return adminService.getMedecinsByUniversiteId(universiteId);
     }
+
     // ================= ETUDIANTS CRUD =================
 
     @PostMapping("/etudiants")
@@ -74,13 +98,30 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("error", "L'université est obligatoire"));
         }
 
-        User etudiant = adminService.createEtudiant(request);
+        // Validate email
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "L'email est obligatoire"));
+        }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Étudiant créé avec succès et invitation envoyée");
-        response.put("etudiant", etudiant);
+        // Validate nom and prenom
+        if (request.getNom() == null || request.getNom().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Le nom est obligatoire"));
+        }
+        if (request.getPrenom() == null || request.getPrenom().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Le prénom est obligatoire"));
+        }
 
-        return ResponseEntity.ok(response);
+        try {
+            User etudiant = adminService.createEtudiant(request);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Étudiant créé avec succès et invitation envoyée");
+            response.put("etudiant", etudiant);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/etudiants")
@@ -107,6 +148,7 @@ public class AdminController {
     public void deleteEtudiant(@PathVariable String id) {
         adminService.deleteEtudiant(id);
     }
+
     // ================= RDV (APPOINTMENTS) CRUD =================
 
     @PostMapping("/rdvs")

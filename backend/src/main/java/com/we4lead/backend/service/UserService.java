@@ -11,6 +11,8 @@ import com.we4lead.backend.dto.UserUpdateRequest;
 import com.we4lead.backend.dto.EtudiantResponse;
 import com.we4lead.backend.entity.Role;
 import com.we4lead.backend.entity.User;
+import com.we4lead.backend.entity.Genre;
+import com.we4lead.backend.entity.Situation;
 import jakarta.transaction.Transactional;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -83,6 +85,10 @@ public class UserService {
         if (request.getNom() != null) user.setNom(request.getNom());
         if (request.getPrenom() != null) user.setPrenom(request.getPrenom());
         if (request.getTelephone() != null) user.setTelephone(request.getTelephone());
+        if (request.getSpecialite() != null) user.setSpecialite(request.getSpecialite());
+        if (request.getGenre() != null) user.setGenre(request.getGenre());
+        if (request.getSituation() != null) user.setSituation(request.getSituation());
+        if (request.getNiveauEtude() != null) user.setNiveauEtude(request.getNiveauEtude());
 
         return userRepository.save(user);
     }
@@ -156,6 +162,7 @@ public class UserService {
                 medecin.getEmail(),
                 medecin.getPhotoPath() != null ? "/users/me/photo" : null,
                 medecin.getTelephone(),
+                medecin.getSpecialite(), // Ajout de la spécialité
                 universiteResponses,
                 creneaux,
                 rdvs
@@ -181,7 +188,7 @@ public class UserService {
                 ))
                 .toList();
 
-        // Create MedecinResponse for the RDV
+        // Create MedecinResponse for the RDV avec tous les champs
         MedecinResponse rdvMedecinResponse = new MedecinResponse(
                 r.getMedecin().getId(),
                 r.getMedecin().getNom(),
@@ -189,6 +196,7 @@ public class UserService {
                 r.getMedecin().getEmail(),
                 r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                 r.getMedecin().getTelephone(),
+                r.getMedecin().getSpecialite(), // Ajout de la spécialité
                 medecinUniversites,
                 List.of(),
                 List.of()
@@ -210,7 +218,7 @@ public class UserService {
             );
         }
 
-        // Create EtudiantResponse for the RDV
+        // Create EtudiantResponse for the RDV avec tous les champs
         EtudiantResponse etudiantResponse = r.getEtudiant() != null ?
                 new EtudiantResponse(
                         r.getEtudiant().getId(),
@@ -219,7 +227,10 @@ public class UserService {
                         r.getEtudiant().getEmail(),
                         r.getEtudiant().getTelephone(),
                         r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                        etudiantUniversite
+                        etudiantUniversite,
+                        r.getEtudiant().getGenre(), // Ajout du genre
+                        r.getEtudiant().getSituation(), // Ajout de la situation
+                        r.getEtudiant().getNiveauEtude() // Ajout du niveau d'étude
                 ) : null;
 
         return new RdvResponse(

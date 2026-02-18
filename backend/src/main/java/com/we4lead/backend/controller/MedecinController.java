@@ -159,7 +159,16 @@ public class MedecinController {
                     .body(Map.of("error", "Erreur lors de la récupération des universités"));
         }
     }
-
+    @GetMapping("/rdvs/upcoming")
+    public ResponseEntity<?> getUpcomingRdvs(@AuthenticationPrincipal Jwt jwt) {
+        try {
+            List<Rdv> rdvs = medecinService.getUpcomingRdvs(jwt);
+            return ResponseEntity.ok(rdvs);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de la récupération des rendez-vous à venir"));
+        }
+    }
     @GetMapping("/{doctorId}/university")
     public ResponseEntity<?> getFirstUniversityByDoctorId(@PathVariable String doctorId) {
         try {

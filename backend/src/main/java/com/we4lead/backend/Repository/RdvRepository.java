@@ -68,4 +68,8 @@ public interface RdvRepository extends JpaRepository<Rdv, String> {
     // Find by status
     @Query("SELECT r FROM Rdv r WHERE r.status = :status")
     List<Rdv> findByStatus(@Param("status") RdvStatus status);
+    // Add this method to RdvRepository.java
+
+    @Query("SELECT r FROM Rdv r WHERE r.medecin.id = :medecinId AND r.date >= :today AND r.status = 'CONFIRMED' ORDER BY r.date ASC, r.heure ASC")
+    List<Rdv> findUpcomingRdvsByMedecin(@Param("medecinId") String medecinId, @Param("today") String today);
 }

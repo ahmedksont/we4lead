@@ -10,8 +10,8 @@ public class MedecinResponse {
     private String email;
     private String photoUrl;
     private String telephone;
-    private List<UniversiteResponse> universites; // Add this
-
+    private String specialite; // Ajout du champ specialite
+    private List<UniversiteResponse> universites;
     private List<CreneauResponse> creneaux;
     private List<RdvResponse> rdvs;
 
@@ -22,7 +22,8 @@ public class MedecinResponse {
             String email,
             String photoUrl,
             String telephone,
-            List<UniversiteResponse> universites, // Add this
+            String specialite, // Ajout du paramètre specialite
+            List<UniversiteResponse> universites,
             List<CreneauResponse> creneaux,
             List<RdvResponse> rdvs
     ) {
@@ -32,7 +33,8 @@ public class MedecinResponse {
         this.email = email;
         this.photoUrl = photoUrl;
         this.telephone = telephone;
-        this.universites = universites; // Add this
+        this.specialite = specialite; // Initialisation du champ specialite
+        this.universites = universites;
         this.creneaux = creneaux;
         this.rdvs = rdvs;
     }
@@ -44,7 +46,8 @@ public class MedecinResponse {
     public String getEmail() { return email; }
     public String getPhotoUrl() { return photoUrl; }
     public String getTelephone() { return telephone; }
-    public List<UniversiteResponse> getUniversites() { return universites; } // Add this
+    public String getSpecialite() { return specialite; } // Getter pour specialite
+    public List<UniversiteResponse> getUniversites() { return universites; }
     public List<CreneauResponse> getCreneaux() { return creneaux; }
     public List<RdvResponse> getRdvs() { return rdvs; }
 }

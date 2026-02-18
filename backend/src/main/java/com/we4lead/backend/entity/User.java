@@ -24,7 +24,18 @@ public class User {
 
     private String photoPath;
 
-    // For medecins - many-to-many with universities
+    // NOUVEAUX CHAMPS
+    @Enumerated(EnumType.STRING)
+    private Situation situation;
+
+    @Enumerated(EnumType.STRING)
+    private Genre genre;
+
+    @Column(name = "niveau_etude")
+    private String niveauEtude;
+
+    private String specialite;
+
     @JsonIgnore
     @ManyToMany
     @JoinTable(
@@ -34,7 +45,6 @@ public class User {
     )
     private Set<Universite> universites = new HashSet<>();
 
-    // For admins - one-to-many relationship (an admin belongs to one university)
     @ManyToOne
     @JoinColumn(name = "universite_id")
     private Universite universite;
@@ -50,7 +60,7 @@ public class User {
         this.role = role;
     }
 
-    // ====== Getters & Setters ======
+    // ====== Getters & Setters existants ======
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -77,4 +87,17 @@ public class User {
 
     public Universite getUniversite() { return universite; }
     public void setUniversite(Universite universite) { this.universite = universite; }
+
+    // ====== Getters & Setters pour les nouveaux champs ======
+    public Situation getSituation() { return situation; }
+    public void setSituation(Situation situation) { this.situation = situation; }
+
+    public Genre getGenre() { return genre; }
+    public void setGenre(Genre genre) { this.genre = genre; }
+
+    public String getNiveauEtude() { return niveauEtude; }
+    public void setNiveauEtude(String niveauEtude) { this.niveauEtude = niveauEtude; }
+
+    public String getSpecialite() { return specialite; }
+    public void setSpecialite(String specialite) { this.specialite = specialite; }
 }

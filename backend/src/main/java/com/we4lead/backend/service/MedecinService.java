@@ -14,6 +14,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -262,5 +264,14 @@ public class MedecinService {
                 universite.getLogoPath(),
                 universite.getCode()
         );
+    }
+    // Add this method to MedecinService.java
+
+    public List<Rdv> getUpcomingRdvs(Jwt jwt) {
+        String medecinId = jwt.getSubject();
+        String today = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
+
+        // You'll need to add this method to your RdvRepository
+        return rdvRepository.findUpcomingRdvsByMedecin(medecinId, today);
     }
 }

@@ -191,4 +191,39 @@ public class EtudiantController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
+    @GetMapping("/doctors/{doctorId}")
+    public ResponseEntity<?> getDoctorInfo(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String doctorId) {
+        try {
+            MedecinResponse doctor = etudiantService.getDoctorInfo(jwt, doctorId);
+            return ResponseEntity.ok(doctor);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de la récupération des informations du médecin"));
+        }
+    }
+
+    /**
+     * Get doctor's available time slots (creneaux) by doctor ID
+     * Useful for displaying available appointment times in the booking interface
+     */
+    @GetMapping("/doctors/{doctorId}/creneaux")
+    public ResponseEntity<?> getDoctorCreneaux(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String doctorId) {
+        try {
+            List<CreneauResponse> creneaux = etudiantService.getDoctorCreneaux(jwt, doctorId);
+            return ResponseEntity.ok(creneaux);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de la récupération des créneaux du médecin"));
+        }
+    }
 }

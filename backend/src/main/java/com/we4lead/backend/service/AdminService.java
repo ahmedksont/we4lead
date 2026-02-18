@@ -57,6 +57,11 @@ public class AdminService {
         user.setTelephone(request.getTelephone());
         user.setRole(Role.MEDECIN);
 
+        // Nouveaux champs pour le médecin
+        user.setSpecialite(request.getSpecialite());
+        user.setGenre(request.getGenre());
+        user.setSituation(request.getSituation());
+
         // Assign university to medicin (many-to-many)
         Set<Universite> universites = new HashSet<>();
         universites.add(universite);
@@ -80,11 +85,9 @@ public class AdminService {
                     .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
                     .toList();
 
-            // FIX: Update RdvResponse creation to use FULL constructor
             List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
                     .stream()
                     .map(r -> {
-                        // Create FULL MedecinResponse for the RDV
                         List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
                                 .map(u -> new UniversiteResponse(
                                         u.getId(),
@@ -106,12 +109,12 @@ public class AdminService {
                                 r.getMedecin().getEmail(),
                                 r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                                 r.getMedecin().getTelephone(),
+                                r.getMedecin().getSpecialite(), // Ajout de la spécialité
                                 medecinUniversites,
                                 List.of(),
                                 List.of()
                         );
 
-                        // Create FULL EtudiantResponse for the RDV
                         UniversiteResponse etudiantUniversite = null;
                         if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
                             etudiantUniversite = new UniversiteResponse(
@@ -135,7 +138,10 @@ public class AdminService {
                                         r.getEtudiant().getEmail(),
                                         r.getEtudiant().getTelephone(),
                                         r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                                        etudiantUniversite
+                                        etudiantUniversite,
+                                        r.getEtudiant().getGenre(),      // Ajout du genre
+                                        r.getEtudiant().getSituation(),   // Ajout de la situation
+                                        r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
                                 ) : null;
 
                         return new RdvResponse(
@@ -149,7 +155,6 @@ public class AdminService {
                     })
                     .toList();
 
-            // Convert universities to UniversiteResponse records
             List<UniversiteResponse> universiteResponses = m.getUniversites().stream()
                     .map(u -> new UniversiteResponse(
                             u.getId(),
@@ -171,12 +176,14 @@ public class AdminService {
                     m.getEmail(),
                     m.getPhotoPath() != null ? "/users/me/photo" : null,
                     m.getTelephone(),
+                    m.getSpecialite(), // Ajout de la spécialité
                     universiteResponses,
                     creneaux,
                     rdvs
             );
         }).toList();
     }
+
     public User getMedecinById(String id) {
         return userRepository.findById(id)
                 .filter(user -> user.getRole() == Role.MEDECIN)
@@ -196,6 +203,16 @@ public class AdminService {
         if (request.getTelephone() != null) {
             user.setTelephone(request.getTelephone());
         }
+        // Nouveaux champs pour le médecin
+        if (request.getSpecialite() != null) {
+            user.setSpecialite(request.getSpecialite());
+        }
+        if (request.getGenre() != null) {
+            user.setGenre(request.getGenre());
+        }
+        if (request.getSituation() != null) {
+            user.setSituation(request.getSituation());
+        }
 
         // Update university if provided
         if (request.getUniversiteId() != null) {
@@ -214,14 +231,12 @@ public class AdminService {
     public void deleteMedecin(String id, boolean forceCascade) {
         User medecin = getMedecinById(id);
 
-        // Check if medicin has appointments
         long appointmentsCount = rdvRepository.countByMedecin_Id(id);
 
         if (appointmentsCount > 0 && !forceCascade) {
             throw new RuntimeException("Ce médecin a " + appointmentsCount + " rendez-vous. Utilisez forceCascade=true pour supprimer quand même.");
         }
 
-        // Delete related entities
         if (forceCascade) {
             rdvRepository.deleteByMedecin_Id(id);
             creneauRepository.deleteByMedecin_Id(id);
@@ -229,12 +244,11 @@ public class AdminService {
 
         userRepository.delete(medecin);
     }
+
     public List<MedecinResponse> getMedecinsByUniversiteId(Long universiteId) {
-        // Verify university exists
         Universite universite = universiteRepository.findById(universiteId)
                 .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
 
-        // Get all medecins for this university
         List<User> medecins = userRepository.findByUniversiteIdAndRole(universiteId, Role.MEDECIN);
 
         return medecins.stream().map(m -> {
@@ -243,11 +257,9 @@ public class AdminService {
                     .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
                     .toList();
 
-            // FIX: Update RdvResponse creation to use FULL constructor
             List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
                     .stream()
                     .map(r -> {
-                        // Create FULL MedecinResponse for the RDV
                         List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
                                 .map(u -> new UniversiteResponse(
                                         u.getId(),
@@ -269,12 +281,12 @@ public class AdminService {
                                 r.getMedecin().getEmail(),
                                 r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                                 r.getMedecin().getTelephone(),
+                                r.getMedecin().getSpecialite(), // Ajout de la spécialité
                                 medecinUniversites,
                                 List.of(),
                                 List.of()
                         );
 
-                        // Create FULL EtudiantResponse for the RDV
                         UniversiteResponse etudiantUniversite = null;
                         if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
                             etudiantUniversite = new UniversiteResponse(
@@ -298,7 +310,10 @@ public class AdminService {
                                         r.getEtudiant().getEmail(),
                                         r.getEtudiant().getTelephone(),
                                         r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                                        etudiantUniversite
+                                        etudiantUniversite,
+                                        r.getEtudiant().getGenre(),      // Ajout du genre
+                                        r.getEtudiant().getSituation(),   // Ajout de la situation
+                                        r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
                                 ) : null;
 
                         return new RdvResponse(
@@ -312,7 +327,6 @@ public class AdminService {
                     })
                     .toList();
 
-            // Convert universities to UniversiteResponse
             List<UniversiteResponse> universiteResponses = m.getUniversites().stream()
                     .map(u -> new UniversiteResponse(
                             u.getId(),
@@ -334,24 +348,23 @@ public class AdminService {
                     m.getEmail(),
                     m.getPhotoPath() != null ? "/users/me/photo" : null,
                     m.getTelephone(),
+                    m.getSpecialite(), // Ajout de la spécialité
                     universiteResponses,
                     creneaux,
                     rdvs
             );
         }).toList();
     }
+
     @Transactional
     public User createEtudiant(UserCreateRequest request) {
-        // Validate university ID
         if (request.getUniversiteId() == null) {
             throw new IllegalArgumentException("L'université est obligatoire pour créer un étudiant");
         }
 
-        // Find the university
         Universite universite = universiteRepository.findById(request.getUniversiteId())
                 .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
 
-        // Create new etudiant user
         User user = new User();
         user.setId(UUID.randomUUID().toString());
         user.setEmail(request.getEmail());
@@ -360,13 +373,15 @@ public class AdminService {
         user.setTelephone(request.getTelephone());
         user.setRole(Role.ETUDIANT);
 
-        // Assign university to etudiant (many-to-one)
+        // Nouveaux champs pour l'étudiant
+        user.setGenre(request.getGenre());
+        user.setSituation(request.getSituation());
+        user.setNiveauEtude(request.getNiveauEtude());
+
         user.setUniversite(universite);
 
-        // Save the user
         User savedUser = userRepository.save(user);
 
-        // Invite the user via Supabase
         supabaseAuthService.inviteUser(savedUser.getEmail());
 
         return savedUser;
@@ -398,17 +413,18 @@ public class AdminService {
                     e.getEmail(),
                     e.getTelephone(),
                     e.getPhotoPath() != null ? "/users/me/photo" : null,
-                    universiteResponse
+                    universiteResponse,
+                    e.getGenre(),        // Ajout du genre
+                    e.getSituation(),     // Ajout de la situation
+                    e.getNiveauEtude()    // Ajout du niveau d'étude
             );
         }).toList();
     }
 
     public List<EtudiantResponse> getEtudiantsByUniversiteId(Long universiteId) {
-        // Verify university exists
         Universite universite = universiteRepository.findById(universiteId)
                 .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
 
-        // Get all etudiants for this university
         List<User> etudiants = userRepository.findEtudiantsByUniversiteId(universiteId, Role.ETUDIANT);
 
         return etudiants.stream().map(e -> {
@@ -431,7 +447,10 @@ public class AdminService {
                     e.getEmail(),
                     e.getTelephone(),
                     e.getPhotoPath() != null ? "/users/me/photo" : null,
-                    universiteResponse
+                    universiteResponse,
+                    e.getGenre(),        // Ajout du genre
+                    e.getSituation(),     // Ajout de la situation
+                    e.getNiveauEtude()    // Ajout du niveau d'étude
             );
         }).toList();
     }
@@ -455,8 +474,17 @@ public class AdminService {
         if (request.getTelephone() != null) {
             user.setTelephone(request.getTelephone());
         }
+        // Nouveaux champs pour l'étudiant
+        if (request.getGenre() != null) {
+            user.setGenre(request.getGenre());
+        }
+        if (request.getSituation() != null) {
+            user.setSituation(request.getSituation());
+        }
+        if (request.getNiveauEtude() != null) {
+            user.setNiveauEtude(request.getNiveauEtude());
+        }
 
-        // Update university if provided
         if (request.getUniversiteId() != null) {
             Universite universite = universiteRepository.findById(request.getUniversiteId())
                     .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
@@ -470,21 +498,19 @@ public class AdminService {
     public void deleteEtudiant(String id) {
         User etudiant = getEtudiantById(id);
 
-        // Check if student has appointments
         long appointmentsCount = rdvRepository.countByEtudiant_Id(id);
 
         if (appointmentsCount > 0) {
-            // Delete related appointments first
             rdvRepository.deleteByEtudiant_Id(id);
         }
 
         userRepository.delete(etudiant);
     }
+
     // ================= RDV (APPOINTMENTS) CRUD =================
 
     @Transactional
     public Rdv createRdv(RdvRequest request) {
-        // Validate required fields
         if (request.getMedecinId() == null) {
             throw new IllegalArgumentException("Médecin est obligatoire");
         }
@@ -495,17 +521,14 @@ public class AdminService {
             throw new IllegalArgumentException("Date et heure sont obligatoires");
         }
 
-        // Find medecin
         User medecin = userRepository.findById(request.getMedecinId())
                 .filter(user -> user.getRole() == Role.MEDECIN)
                 .orElseThrow(() -> new IllegalArgumentException("Médecin non trouvé : " + request.getMedecinId()));
 
-        // Find etudiant
         User etudiant = userRepository.findById(request.getEtudiantId())
                 .filter(user -> user.getRole() == Role.ETUDIANT)
                 .orElseThrow(() -> new IllegalArgumentException("Étudiant non trouvé : " + request.getEtudiantId()));
 
-        // Check if the etudiant belongs to the same university as the medecin
         boolean sameUniversity = medecin.getUniversites().stream()
                 .anyMatch(u -> u.getId().equals(etudiant.getUniversite().getId()));
 
@@ -513,7 +536,6 @@ public class AdminService {
             throw new IllegalArgumentException("L'étudiant et le médecin doivent appartenir à la même université");
         }
 
-        // Check if the slot is already taken
         boolean slotTaken = rdvRepository.existsByMedecin_IdAndDateAndHeure(
                 request.getMedecinId(),
                 request.getDate(),
@@ -524,7 +546,6 @@ public class AdminService {
             throw new IllegalArgumentException("Ce créneau est déjà réservé pour ce médecin");
         }
 
-        // Create new RDV with student assigned directly
         Rdv rdv = new Rdv();
         rdv.setId(UUID.randomUUID().toString());
         rdv.setDate(request.getDate());
@@ -535,6 +556,7 @@ public class AdminService {
 
         return rdvRepository.save(rdv);
     }
+
     @Transactional
     public Rdv assignEtudiantToRdv(String rdvId, String etudiantId) {
         Rdv rdv = rdvRepository.findById(rdvId)
@@ -552,7 +574,6 @@ public class AdminService {
         List<Rdv> rdvs = rdvRepository.findAll();
 
         return rdvs.stream().map(r -> {
-            // Convert doctor universities
             List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
                     .map(u -> new UniversiteResponse(
                             u.getId(),
@@ -567,7 +588,6 @@ public class AdminService {
                     ))
                     .toList();
 
-            // Create FULL MedecinResponse
             MedecinResponse medecinResponse = new MedecinResponse(
                     r.getMedecin().getId(),
                     r.getMedecin().getNom(),
@@ -575,12 +595,12 @@ public class AdminService {
                     r.getMedecin().getEmail(),
                     r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                     r.getMedecin().getTelephone(),
+                    r.getMedecin().getSpecialite(), // Ajout de la spécialité
                     medecinUniversites,
-                    List.of(), // creneaux - empty list
-                    List.of()  // rdvs - empty list to avoid circular reference
+                    List.of(),
+                    List.of()
             );
 
-            // Convert student university
             UniversiteResponse etudiantUniversite = null;
             if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
                 etudiantUniversite = new UniversiteResponse(
@@ -596,7 +616,6 @@ public class AdminService {
                 );
             }
 
-            // Create FULL EtudiantResponse
             EtudiantResponse etudiantResponse = new EtudiantResponse(
                     r.getEtudiant().getId(),
                     r.getEtudiant().getNom(),
@@ -604,7 +623,10 @@ public class AdminService {
                     r.getEtudiant().getEmail(),
                     r.getEtudiant().getTelephone(),
                     r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                    etudiantUniversite
+                    etudiantUniversite,
+                    r.getEtudiant().getGenre(),      // Ajout du genre
+                    r.getEtudiant().getSituation(),   // Ajout de la situation
+                    r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
             );
 
             return new RdvResponse(
@@ -622,7 +644,6 @@ public class AdminService {
         Rdv rdv = rdvRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Rendez-vous non trouvé avec l'ID : " + id));
 
-        // Convert doctor universities
         List<UniversiteResponse> medecinUniversites = rdv.getMedecin().getUniversites().stream()
                 .map(u -> new UniversiteResponse(
                         u.getId(),
@@ -637,7 +658,6 @@ public class AdminService {
                 ))
                 .toList();
 
-        // Create FULL MedecinResponse
         MedecinResponse medecinResponse = new MedecinResponse(
                 rdv.getMedecin().getId(),
                 rdv.getMedecin().getNom(),
@@ -645,12 +665,12 @@ public class AdminService {
                 rdv.getMedecin().getEmail(),
                 rdv.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                 rdv.getMedecin().getTelephone(),
+                rdv.getMedecin().getSpecialite(), // Ajout de la spécialité
                 medecinUniversites,
-                List.of(), // creneaux - empty list
-                List.of()  // rdvs - empty list to avoid circular reference
+                List.of(),
+                List.of()
         );
 
-        // Convert student university
         UniversiteResponse etudiantUniversite = null;
         if (rdv.getEtudiant() != null && rdv.getEtudiant().getUniversite() != null) {
             etudiantUniversite = new UniversiteResponse(
@@ -666,7 +686,6 @@ public class AdminService {
             );
         }
 
-        // Create FULL EtudiantResponse
         EtudiantResponse etudiantResponse = new EtudiantResponse(
                 rdv.getEtudiant().getId(),
                 rdv.getEtudiant().getNom(),
@@ -674,7 +693,10 @@ public class AdminService {
                 rdv.getEtudiant().getEmail(),
                 rdv.getEtudiant().getTelephone(),
                 rdv.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                etudiantUniversite
+                etudiantUniversite,
+                rdv.getEtudiant().getGenre(),      // Ajout du genre
+                rdv.getEtudiant().getSituation(),   // Ajout de la situation
+                rdv.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
         );
 
         return new RdvResponse(
@@ -686,6 +708,7 @@ public class AdminService {
                 etudiantResponse
         );
     }
+
     @Transactional
     public Rdv updateRdv(String id, RdvUpdateRequest request) {
         Rdv rdv = rdvRepository.findById(id)
@@ -717,14 +740,12 @@ public class AdminService {
     }
 
     public List<RdvResponse> getRdvsByUniversiteId(Long universiteId) {
-        // Verify university exists
         Universite universite = universiteRepository.findById(universiteId)
                 .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
 
         List<Rdv> rdvs = rdvRepository.findByUniversiteId(universiteId);
 
         return rdvs.stream().map(r -> {
-            // Convert doctor universities
             List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
                     .map(u -> new UniversiteResponse(
                             u.getId(),
@@ -739,7 +760,6 @@ public class AdminService {
                     ))
                     .toList();
 
-            // Create FULL MedecinResponse
             MedecinResponse medecinResponse = new MedecinResponse(
                     r.getMedecin().getId(),
                     r.getMedecin().getNom(),
@@ -747,12 +767,12 @@ public class AdminService {
                     r.getMedecin().getEmail(),
                     r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                     r.getMedecin().getTelephone(),
+                    r.getMedecin().getSpecialite(), // Ajout de la spécialité
                     medecinUniversites,
                     List.of(),
                     List.of()
             );
 
-            // Convert student university
             UniversiteResponse etudiantUniversite = null;
             if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
                 etudiantUniversite = new UniversiteResponse(
@@ -768,7 +788,6 @@ public class AdminService {
                 );
             }
 
-            // Create FULL EtudiantResponse
             EtudiantResponse etudiantResponse = new EtudiantResponse(
                     r.getEtudiant().getId(),
                     r.getEtudiant().getNom(),
@@ -776,7 +795,10 @@ public class AdminService {
                     r.getEtudiant().getEmail(),
                     r.getEtudiant().getTelephone(),
                     r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                    etudiantUniversite
+                    etudiantUniversite,
+                    r.getEtudiant().getGenre(),      // Ajout du genre
+                    r.getEtudiant().getSituation(),   // Ajout de la situation
+                    r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
             );
 
             return new RdvResponse(
@@ -791,7 +813,6 @@ public class AdminService {
     }
 
     public List<RdvResponse> getRdvsByMedecinId(String medecinId) {
-        // Verify medecin exists
         User medecin = userRepository.findById(medecinId)
                 .filter(user -> user.getRole() == Role.MEDECIN)
                 .orElseThrow(() -> new IllegalArgumentException("Médecin non trouvé : " + medecinId));
@@ -799,7 +820,6 @@ public class AdminService {
         List<Rdv> rdvs = rdvRepository.findByMedecin_Id(medecinId);
 
         return rdvs.stream().map(r -> {
-            // Convert doctor universities
             List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
                     .map(u -> new UniversiteResponse(
                             u.getId(),
@@ -814,7 +834,6 @@ public class AdminService {
                     ))
                     .toList();
 
-            // Create FULL MedecinResponse
             MedecinResponse medecinResponse = new MedecinResponse(
                     r.getMedecin().getId(),
                     r.getMedecin().getNom(),
@@ -822,12 +841,12 @@ public class AdminService {
                     r.getMedecin().getEmail(),
                     r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                     r.getMedecin().getTelephone(),
+                    r.getMedecin().getSpecialite(), // Ajout de la spécialité
                     medecinUniversites,
                     List.of(),
                     List.of()
             );
 
-            // Convert student university
             UniversiteResponse etudiantUniversite = null;
             if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
                 etudiantUniversite = new UniversiteResponse(
@@ -843,7 +862,6 @@ public class AdminService {
                 );
             }
 
-            // Create FULL EtudiantResponse
             EtudiantResponse etudiantResponse = new EtudiantResponse(
                     r.getEtudiant().getId(),
                     r.getEtudiant().getNom(),
@@ -851,7 +869,10 @@ public class AdminService {
                     r.getEtudiant().getEmail(),
                     r.getEtudiant().getTelephone(),
                     r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                    etudiantUniversite
+                    etudiantUniversite,
+                    r.getEtudiant().getGenre(),      // Ajout du genre
+                    r.getEtudiant().getSituation(),   // Ajout de la situation
+                    r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
             );
 
             return new RdvResponse(
@@ -866,7 +887,6 @@ public class AdminService {
     }
 
     public List<RdvResponse> getRdvsByEtudiantId(String etudiantId) {
-        // Verify etudiant exists
         User etudiant = userRepository.findById(etudiantId)
                 .filter(user -> user.getRole() == Role.ETUDIANT)
                 .orElseThrow(() -> new IllegalArgumentException("Étudiant non trouvé : " + etudiantId));
@@ -874,7 +894,6 @@ public class AdminService {
         List<Rdv> rdvs = rdvRepository.findByEtudiant_Id(etudiantId);
 
         return rdvs.stream().map(r -> {
-            // Convert doctor universities
             List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
                     .map(u -> new UniversiteResponse(
                             u.getId(),
@@ -889,7 +908,6 @@ public class AdminService {
                     ))
                     .toList();
 
-            // Create FULL MedecinResponse
             MedecinResponse medecinResponse = new MedecinResponse(
                     r.getMedecin().getId(),
                     r.getMedecin().getNom(),
@@ -897,12 +915,12 @@ public class AdminService {
                     r.getMedecin().getEmail(),
                     r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                     r.getMedecin().getTelephone(),
+                    r.getMedecin().getSpecialite(), // Ajout de la spécialité
                     medecinUniversites,
                     List.of(),
                     List.of()
             );
 
-            // Convert student university
             UniversiteResponse etudiantUniversite = null;
             if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
                 etudiantUniversite = new UniversiteResponse(
@@ -918,7 +936,6 @@ public class AdminService {
                 );
             }
 
-            // Create FULL EtudiantResponse
             EtudiantResponse etudiantResponse = new EtudiantResponse(
                     r.getEtudiant().getId(),
                     r.getEtudiant().getNom(),
@@ -926,7 +943,10 @@ public class AdminService {
                     r.getEtudiant().getEmail(),
                     r.getEtudiant().getTelephone(),
                     r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                    etudiantUniversite
+                    etudiantUniversite,
+                    r.getEtudiant().getGenre(),      // Ajout du genre
+                    r.getEtudiant().getSituation(),   // Ajout de la situation
+                    r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
             );
 
             return new RdvResponse(
@@ -946,7 +966,6 @@ public class AdminService {
             List<Rdv> rdvs = rdvRepository.findByStatus(rdvStatus);
 
             return rdvs.stream().map(r -> {
-                // Convert doctor universities
                 List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
                         .map(u -> new UniversiteResponse(
                                 u.getId(),
@@ -961,7 +980,6 @@ public class AdminService {
                         ))
                         .toList();
 
-                // Create FULL MedecinResponse
                 MedecinResponse medecinResponse = new MedecinResponse(
                         r.getMedecin().getId(),
                         r.getMedecin().getNom(),
@@ -969,12 +987,12 @@ public class AdminService {
                         r.getMedecin().getEmail(),
                         r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                         r.getMedecin().getTelephone(),
+                        r.getMedecin().getSpecialite(), // Ajout de la spécialité
                         medecinUniversites,
                         List.of(),
                         List.of()
                 );
 
-                // Convert student university
                 UniversiteResponse etudiantUniversite = null;
                 if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
                     etudiantUniversite = new UniversiteResponse(
@@ -990,7 +1008,6 @@ public class AdminService {
                     );
                 }
 
-                // Create FULL EtudiantResponse
                 EtudiantResponse etudiantResponse = new EtudiantResponse(
                         r.getEtudiant().getId(),
                         r.getEtudiant().getNom(),
@@ -998,7 +1015,10 @@ public class AdminService {
                         r.getEtudiant().getEmail(),
                         r.getEtudiant().getTelephone(),
                         r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                        etudiantUniversite
+                        etudiantUniversite,
+                        r.getEtudiant().getGenre(),      // Ajout du genre
+                        r.getEtudiant().getSituation(),   // Ajout de la situation
+                        r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
                 );
 
                 return new RdvResponse(

@@ -1,10 +1,8 @@
 package com.we4lead.backend.service;
 
+import com.we4lead.backend.Repository.CreneauRepository;
 import com.we4lead.backend.dto.*;
-import com.we4lead.backend.entity.Rdv;
-import com.we4lead.backend.entity.RdvStatus;
-import com.we4lead.backend.entity.User;
-import com.we4lead.backend.entity.Universite;
+import com.we4lead.backend.entity.*;
 import com.we4lead.backend.Repository.RdvRepository;
 import com.we4lead.backend.Repository.UserRepository;
 import com.we4lead.backend.Repository.UniversiteRepository;
@@ -27,13 +25,16 @@ public class EtudiantService {
     private final RdvRepository rdvRepository;
     private final UserRepository userRepository;
     private final UniversiteRepository universiteRepository;
+    private final CreneauRepository creneauRepository;
 
     public EtudiantService(RdvRepository rdvRepository,
                            UserRepository userRepository,
-                           UniversiteRepository universiteRepository) {
+                           UniversiteRepository universiteRepository,
+                           CreneauRepository creneauRepository) {
         this.rdvRepository = rdvRepository;
         this.userRepository = userRepository;
         this.universiteRepository = universiteRepository;
+        this.creneauRepository = creneauRepository;
     }
 
     // Get all RDVs for the authenticated student
@@ -295,12 +296,11 @@ public class EtudiantService {
                     ))
                     .collect(Collectors.toList());
         }
-        return List.of(); // Return empty list if no universities
+        return List.of();
     }
 
     private UniversiteResponse getUniversiteResponse(User user) {
         if (user.getUniversites() != null && !user.getUniversites().isEmpty()) {
-            // Get the first university for backward compatibility
             Universite uni = user.getUniversites().iterator().next();
             return new UniversiteResponse(
                     uni.getId(),
@@ -318,8 +318,6 @@ public class EtudiantService {
     }
 
     private MedecinResponse toMedecinResponse(User medecin) {
-        // For now, we don't have creneaux and rdvs in this context
-        // You might want to fetch them if needed
         return new MedecinResponse(
                 medecin.getId(),
                 medecin.getNom(),
@@ -327,9 +325,10 @@ public class EtudiantService {
                 medecin.getEmail(),
                 medecin.getPhotoPath(),
                 medecin.getTelephone(),
-                getUniversitesResponse(medecin), // Now returns List<UniversiteResponse>
-                List.of(), // Empty list for creneaux
-                List.of()  // Empty list for rdvs
+                medecin.getSpecialite(), // Ajout de la spécialité
+                getUniversitesResponse(medecin),
+                List.of(),
+                List.of()
         );
     }
 
@@ -341,7 +340,10 @@ public class EtudiantService {
                 etudiant.getEmail(),
                 etudiant.getTelephone(),
                 etudiant.getPhotoPath(),
-                getUniversiteResponse(etudiant) // Single university for student
+                getUniversiteResponse(etudiant),
+                etudiant.getGenre(),        // Ajout du genre
+                etudiant.getSituation(),     // Ajout de la situation
+                etudiant.getNiveauEtude()    // Ajout du niveau d'étude
         );
     }
 
@@ -358,14 +360,13 @@ public class EtudiantService {
                 etudiantResponse
         );
     }
-    // Add this method to EtudiantService.java
+
     public UniversiteResponse getMyUniversity(Jwt jwt) {
         String etudiantId = jwt.getSubject();
 
         User etudiant = userRepository.findById(etudiantId)
                 .orElseThrow(() -> new RuntimeException("Étudiant non trouvé"));
 
-        // Get the student's university (assuming a student can have multiple, we take the first)
         if (etudiant.getUniversites() != null && !etudiant.getUniversites().isEmpty()) {
             Universite uni = etudiant.getUniversites().iterator().next();
             return new UniversiteResponse(
@@ -383,31 +384,24 @@ public class EtudiantService {
 
         throw new RuntimeException("Aucune université trouvée pour cet étudiant");
     }
-    // Add this method to EtudiantService.java
+
     @Transactional
     public UniversiteResponse assignUniversity(Jwt jwt, Long universityId) {
         String etudiantId = jwt.getSubject();
 
-        // Find the student
         User etudiant = userRepository.findById(etudiantId)
                 .orElseThrow(() -> new RuntimeException("Étudiant non trouvé"));
 
-        // Find the university
         Universite university = universiteRepository.findById(universityId)
                 .orElseThrow(() -> new RuntimeException("Université non trouvée avec l'ID: " + universityId));
 
-        // Check if student already has this university
         if (etudiant.getUniversites().contains(university)) {
             throw new RuntimeException("L'étudiant est déjà associé à cette université");
         }
 
-        // Assign university to student
         etudiant.getUniversites().add(university);
-
-        // Save the updated student
         userRepository.save(etudiant);
 
-        // Return the university response
         return new UniversiteResponse(
                 university.getId(),
                 university.getNom(),
@@ -421,7 +415,6 @@ public class EtudiantService {
         );
     }
 
-    // Optional: Remove university from student
     @Transactional
     public ResponseEntity<?> removeUniversity(Jwt jwt, Long universityId) {
         String etudiantId = jwt.getSubject();
@@ -440,5 +433,70 @@ public class EtudiantService {
         userRepository.save(etudiant);
 
         return ResponseEntity.ok(Map.of("message", "Université retirée avec succès"));
+    }
+
+    /**
+     * Get doctor information by ID for booking
+     */
+    public MedecinResponse getDoctorInfo(Jwt jwt, String doctorId) {
+        String studentId = jwt.getSubject();
+
+        User doctor = userRepository.findById(doctorId)
+                .orElseThrow(() -> new RuntimeException("Médecin non trouvé avec l'ID: " + doctorId));
+
+        if (doctor.getRole() != Role.MEDECIN) {
+            throw new RuntimeException("L'utilisateur avec l'ID " + doctorId + " n'est pas un médecin");
+        }
+
+        List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(doctorId)
+                .stream()
+                .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
+                .collect(Collectors.toList());
+
+        List<UniversiteResponse> universites = doctor.getUniversites().stream()
+                .map(u -> new UniversiteResponse(
+                        u.getId(),
+                        u.getNom(),
+                        u.getVille(),
+                        u.getAdresse(),
+                        u.getTelephone(),
+                        u.getNbEtudiants(),
+                        u.getHoraire(),
+                        u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
+                        u.getCode()
+                ))
+                .collect(Collectors.toList());
+
+        return new MedecinResponse(
+                doctor.getId(),
+                doctor.getNom(),
+                doctor.getPrenom(),
+                doctor.getEmail(),
+                doctor.getPhotoPath() != null ? "/users/me/photo" : null,
+                doctor.getTelephone(),
+                doctor.getSpecialite(), // Ajout de la spécialité
+                universites,
+                creneaux,
+                List.of()
+        );
+    }
+
+    /**
+     * Get doctor's available time slots (creneaux) by doctor ID
+     */
+    public List<CreneauResponse> getDoctorCreneaux(Jwt jwt, String doctorId) {
+        String studentId = jwt.getSubject();
+
+        User doctor = userRepository.findById(doctorId)
+                .orElseThrow(() -> new RuntimeException("Médecin non trouvé avec l'ID: " + doctorId));
+
+        if (doctor.getRole() != Role.MEDECIN) {
+            throw new RuntimeException("L'utilisateur avec l'ID " + doctorId + " n'est pas un médecin");
+        }
+
+        return creneauRepository.findByMedecin_Id(doctorId)
+                .stream()
+                .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
+                .collect(Collectors.toList());
     }
 }
