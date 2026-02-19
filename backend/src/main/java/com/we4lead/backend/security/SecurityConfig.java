@@ -22,9 +22,13 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ Endpoints publics existants
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/demandes/public").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/demandes/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/demandes/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/demandes/**").authenticated()
+
+                        .requestMatchers(HttpMethod.GET, "/demandes/**").authenticated()
 
                         .anyRequest().authenticated()
                 )
@@ -39,11 +43,22 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000"
         ));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"
+        ));
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "X-Requested-With"
+        ));
+        configuration.setExposedHeaders(List.of(
+                "Authorization",
+                "Content-Type"
+        ));
         configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L); // Cache pre-flight requests for 1 hour
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

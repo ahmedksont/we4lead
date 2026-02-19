@@ -1,6 +1,7 @@
 package com.we4lead.backend.controller;
 
 import com.we4lead.backend.dto.DemandeResponse;
+import com.we4lead.backend.dto.DemandeUpdateRequest;
 import com.we4lead.backend.dto.DemandeWithStudentRequest;
 import com.we4lead.backend.entity.TypeSituation;
 import com.we4lead.backend.service.DemandeService;
@@ -152,6 +153,37 @@ public class DemandeController {
             return ResponseEntity.ok(Map.of("message", "Demande supprimée avec succès"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+    /**
+     * Modifie une demande existante (PUT complet)
+     * La description n'est pas modifiable
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDemande(@PathVariable String id, @RequestBody DemandeUpdateRequest request) {
+        try {
+            DemandeResponse updatedDemande = demandeService.updateDemande(id, request);
+            return ResponseEntity.ok(updatedDemande);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Erreur lors de la modification: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Modifie partiellement une demande (PATCH)
+     * La description n'est pas modifiable
+     */
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> partialUpdateDemande(@PathVariable String id, @RequestBody DemandeUpdateRequest request) {
+        try {
+            DemandeResponse updatedDemande = demandeService.updateDemande(id, request);
+            return ResponseEntity.ok(updatedDemande);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Erreur lors de la modification: " + e.getMessage()));
         }
     }
 }

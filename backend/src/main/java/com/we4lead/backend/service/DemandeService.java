@@ -4,6 +4,7 @@ import com.we4lead.backend.Repository.DemandeRepository;
 import com.we4lead.backend.Repository.UniversiteRepository;
 import com.we4lead.backend.Repository.UserRepository;
 import com.we4lead.backend.dto.DemandeResponse;
+import com.we4lead.backend.dto.DemandeUpdateRequest;
 import com.we4lead.backend.dto.DemandeWithStudentRequest;
 import com.we4lead.backend.entity.*;
 import org.springframework.stereotype.Service;
@@ -317,5 +318,54 @@ public class DemandeService {
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Met à jour une demande existante (la description n'est pas modifiable)
+     */
+    @Transactional
+    public DemandeResponse updateDemande(String id, DemandeUpdateRequest request) {
+        Demande demande = demandeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Demande non trouvée avec l'ID: " + id));
+
+        boolean updated = false;
+
+        // Mise à jour du type de situation
+        if (request.getTypeSituation() != null) {
+            demande.setTypeSituation(request.getTypeSituation());
+            updated = true;
+        }
+
+        // Mise à jour du lieu principal
+        if (request.getLieuPrincipal() != null) {
+            demande.setLieuPrincipal(request.getLieuPrincipal());
+            updated = true;
+        }
+
+        // Mise à jour de la période
+        if (request.getPeriode() != null && !request.getPeriode().trim().isEmpty()) {
+            demande.setPeriode(request.getPeriode());
+            updated = true;
+        }
+
+        // Mise à jour du médecin
+        if (request.getMedecinId() != null && !request.getMedecinId().trim().isEmpty()) {
+            User medecin = userRepository.findById(request.getMedecinId())
+                    .orElseThrow(() -> new IllegalArgumentException("Médecin non trouvé avec l'ID: " + request.getMedecinId()));
+
+            if (medecin.getRole() != Role.MEDECIN) {
+                throw new IllegalArgumentException("L'utilisateur avec l'ID " + request.getMedecinId() + " n'est pas un médecin");
+            }
+
+            demande.setMedecin(medecin);
+            updated = true;
+        }
+
+        if (!updated) {
+            throw new IllegalArgumentException("Aucune modification fournie");
+        }
+
+        Demande updatedDemande = demandeRepository.save(demande);
+        return mapToResponse(updatedDemande);
     }
 }
