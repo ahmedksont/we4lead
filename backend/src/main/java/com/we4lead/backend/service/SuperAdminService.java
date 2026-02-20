@@ -43,18 +43,12 @@ public class SuperAdminService {
         }
     }
 
-
-
     public Universite createUniversite(UniversiteRequest request) throws IOException {
         Universite uni = new Universite();
         mapRequestToUniversite(request, uni);
-
         uni.setCode(UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-
         return universiteRepository.save(uni);
     }
-
-
 
     public List<Universite> getAllUniversites() {
         return universiteRepository.findAll();
@@ -65,24 +59,19 @@ public class SuperAdminService {
                 .orElseThrow(() -> new RuntimeException("Universite not found"));
     }
 
-
     public Universite updateUniversite(Long id, UniversiteRequest request) throws IOException {
         Universite uni = getUniversiteById(id);
-
         mapRequestToUniversite(request, uni);
-
         return universiteRepository.save(uni);
     }
-
-
 
     public void deleteUniversite(Long id) {
         if (!universiteRepository.existsById(id)) {
             throw new RuntimeException("Universite not found");
         }
-
         universiteRepository.deleteById(id);
     }
+
     private void mapRequestToUniversite(UniversiteRequest request, Universite uni) throws IOException {
         uni.setNom(request.getNom());
         uni.setVille(request.getVille());
@@ -107,10 +96,16 @@ public class SuperAdminService {
             uni.setLogoPath(filename);
         }
     }
+
     @Transactional
     public User createAdmin(UserCreateRequest request) {
-        Universite universite = universiteRepository.findById(request.getUniversiteId())
-                .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
+        if (request.getUniversiteIds() == null || request.getUniversiteIds().isEmpty()) {
+            throw new IllegalArgumentException("Au moins une université est obligatoire pour créer un admin");
+        }
+
+        // Pour un admin, on prend la première université (relation ManyToOne)
+        Universite universite = universiteRepository.findById(request.getUniversiteIds().get(0))
+                .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteIds().get(0)));
 
         User user = new User();
         user.setId(UUID.randomUUID().toString());
@@ -120,8 +115,8 @@ public class SuperAdminService {
         user.setTelephone(request.getTelephone());
         user.setRole(Role.ADMIN);
         user.setUniversite(universite);
-        User savedUser = userRepository.save(user);
 
+        User savedUser = userRepository.save(user);
         supabaseAuthService.inviteUser(savedUser.getEmail());
 
         return savedUser;
@@ -145,6 +140,12 @@ public class SuperAdminService {
             user.setTelephone(request.getTelephone());
         }
 
+        if (request.getUniversiteIds() != null && !request.getUniversiteIds().isEmpty()) {
+            Universite universite = universiteRepository.findById(request.getUniversiteIds().get(0))
+                    .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteIds().get(0)));
+            user.setUniversite(universite);
+        }
+
         return userRepository.save(user);
     }
 
@@ -152,6 +153,7 @@ public class SuperAdminService {
         User admin = getAdminById(id);
         userRepository.delete(admin);
     }
+
     public List<User> getAllAdmins() {
         return userRepository.findByRoleWithUniversity(Role.ADMIN);
     }

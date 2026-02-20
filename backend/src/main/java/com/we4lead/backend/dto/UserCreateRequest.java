@@ -2,6 +2,7 @@ package com.we4lead.backend.dto;
 
 import com.we4lead.backend.entity.Genre;
 import com.we4lead.backend.entity.Situation;
+import java.util.List;
 
 public class UserCreateRequest {
     private String email;
@@ -9,7 +10,7 @@ public class UserCreateRequest {
     private String prenom;
     private String telephone;
     private String role;
-    private Long universiteId;
+    private List<Long> universiteIds; // Changé de Long à List<Long>
 
     // Nouveaux champs
     private String specialite;
@@ -33,8 +34,9 @@ public class UserCreateRequest {
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
 
-    public Long getUniversiteId() { return universiteId; }
-    public void setUniversiteId(Long universiteId) { this.universiteId = universiteId; }
+    // Changé pour retourner une liste
+    public List<Long> getUniversiteIds() { return universiteIds; }
+    public void setUniversiteIds(List<Long> universiteIds) { this.universiteIds = universiteIds; }
 
     // Getters et Setters pour les nouveaux champs
     public String getSpecialite() { return specialite; }

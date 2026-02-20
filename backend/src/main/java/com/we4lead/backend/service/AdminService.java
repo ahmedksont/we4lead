@@ -39,14 +39,18 @@ public class AdminService {
 
     @Transactional
     public User createMedecin(UserCreateRequest request) {
-        // Validate university ID
-        if (request.getUniversiteId() == null) {
-            throw new IllegalArgumentException("L'université est obligatoire pour créer un médecin");
+        // Validate university IDs
+        if (request.getUniversiteIds() == null || request.getUniversiteIds().isEmpty()) {
+            throw new IllegalArgumentException("Au moins une université est obligatoire pour créer un médecin");
         }
 
-        // Find the university
-        Universite universite = universiteRepository.findById(request.getUniversiteId())
-                .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
+        // Find all universities
+        Set<Universite> universites = new HashSet<>();
+        for (Long universiteId : request.getUniversiteIds()) {
+            Universite universite = universiteRepository.findById(universiteId)
+                    .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
+            universites.add(universite);
+        }
 
         // Create new medicin user
         User user = new User();
@@ -62,9 +66,7 @@ public class AdminService {
         user.setGenre(request.getGenre());
         user.setSituation(request.getSituation());
 
-        // Assign university to medicin (many-to-many)
-        Set<Universite> universites = new HashSet<>();
-        universites.add(universite);
+        // Assign multiple universities to medicin
         user.setUniversites(universites);
 
         // Save the user
@@ -97,7 +99,7 @@ public class AdminService {
                                         u.getTelephone(),
                                         u.getNbEtudiants(),
                                         u.getHoraire(),
-                                        u.getLogoPath(),
+                                        u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
                                         u.getCode()
                                 ))
                                 .toList();
@@ -109,7 +111,7 @@ public class AdminService {
                                 r.getMedecin().getEmail(),
                                 r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                                 r.getMedecin().getTelephone(),
-                                r.getMedecin().getSpecialite(), // Ajout de la spécialité
+                                r.getMedecin().getSpecialite(),
                                 medecinUniversites,
                                 List.of(),
                                 List.of()
@@ -125,7 +127,7 @@ public class AdminService {
                                     r.getEtudiant().getUniversite().getTelephone(),
                                     r.getEtudiant().getUniversite().getNbEtudiants(),
                                     r.getEtudiant().getUniversite().getHoraire(),
-                                    r.getEtudiant().getUniversite().getLogoPath(),
+                                    r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,
                                     r.getEtudiant().getUniversite().getCode()
                             );
                         }
@@ -139,9 +141,9 @@ public class AdminService {
                                         r.getEtudiant().getTelephone(),
                                         r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
                                         etudiantUniversite,
-                                        r.getEtudiant().getGenre(),      // Ajout du genre
-                                        r.getEtudiant().getSituation(),   // Ajout de la situation
-                                        r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
+                                        r.getEtudiant().getGenre(),
+                                        r.getEtudiant().getSituation(),
+                                        r.getEtudiant().getNiveauEtude()
                                 ) : null;
 
                         return new RdvResponse(
@@ -164,7 +166,7 @@ public class AdminService {
                             u.getTelephone(),
                             u.getNbEtudiants(),
                             u.getHoraire(),
-                            u.getLogoPath(),
+                            u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
                             u.getCode()
                     ))
                     .toList();
@@ -176,7 +178,7 @@ public class AdminService {
                     m.getEmail(),
                     m.getPhotoPath() != null ? "/users/me/photo" : null,
                     m.getTelephone(),
-                    m.getSpecialite(), // Ajout de la spécialité
+                    m.getSpecialite(),
                     universiteResponses,
                     creneaux,
                     rdvs
@@ -203,7 +205,6 @@ public class AdminService {
         if (request.getTelephone() != null) {
             user.setTelephone(request.getTelephone());
         }
-        // Nouveaux champs pour le médecin
         if (request.getSpecialite() != null) {
             user.setSpecialite(request.getSpecialite());
         }
@@ -214,13 +215,14 @@ public class AdminService {
             user.setSituation(request.getSituation());
         }
 
-        // Update university if provided
-        if (request.getUniversiteId() != null) {
-            Universite universite = universiteRepository.findById(request.getUniversiteId())
-                    .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
-
+        // Update universities if provided
+        if (request.getUniversiteIds() != null && !request.getUniversiteIds().isEmpty()) {
             Set<Universite> universites = new HashSet<>();
-            universites.add(universite);
+            for (Long universiteId : request.getUniversiteIds()) {
+                Universite universite = universiteRepository.findById(universiteId)
+                        .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
+                universites.add(universite);
+            }
             user.setUniversites(universites);
         }
 
@@ -269,7 +271,7 @@ public class AdminService {
                                         u.getTelephone(),
                                         u.getNbEtudiants(),
                                         u.getHoraire(),
-                                        u.getLogoPath(),
+                                        u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
                                         u.getCode()
                                 ))
                                 .toList();
@@ -281,7 +283,7 @@ public class AdminService {
                                 r.getMedecin().getEmail(),
                                 r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
                                 r.getMedecin().getTelephone(),
-                                r.getMedecin().getSpecialite(), // Ajout de la spécialité
+                                r.getMedecin().getSpecialite(),
                                 medecinUniversites,
                                 List.of(),
                                 List.of()
@@ -297,7 +299,7 @@ public class AdminService {
                                     r.getEtudiant().getUniversite().getTelephone(),
                                     r.getEtudiant().getUniversite().getNbEtudiants(),
                                     r.getEtudiant().getUniversite().getHoraire(),
-                                    r.getEtudiant().getUniversite().getLogoPath(),
+                                    r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,
                                     r.getEtudiant().getUniversite().getCode()
                             );
                         }
@@ -311,9 +313,9 @@ public class AdminService {
                                         r.getEtudiant().getTelephone(),
                                         r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
                                         etudiantUniversite,
-                                        r.getEtudiant().getGenre(),      // Ajout du genre
-                                        r.getEtudiant().getSituation(),   // Ajout de la situation
-                                        r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
+                                        r.getEtudiant().getGenre(),
+                                        r.getEtudiant().getSituation(),
+                                        r.getEtudiant().getNiveauEtude()
                                 ) : null;
 
                         return new RdvResponse(
@@ -336,7 +338,7 @@ public class AdminService {
                             u.getTelephone(),
                             u.getNbEtudiants(),
                             u.getHoraire(),
-                            u.getLogoPath(),
+                            u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
                             u.getCode()
                     ))
                     .toList();
@@ -348,7 +350,7 @@ public class AdminService {
                     m.getEmail(),
                     m.getPhotoPath() != null ? "/users/me/photo" : null,
                     m.getTelephone(),
-                    m.getSpecialite(), // Ajout de la spécialité
+                    m.getSpecialite(),
                     universiteResponses,
                     creneaux,
                     rdvs
@@ -358,12 +360,13 @@ public class AdminService {
 
     @Transactional
     public User createEtudiant(UserCreateRequest request) {
-        if (request.getUniversiteId() == null) {
-            throw new IllegalArgumentException("L'université est obligatoire pour créer un étudiant");
+        if (request.getUniversiteIds() == null || request.getUniversiteIds().isEmpty()) {
+            throw new IllegalArgumentException("Au moins une université est obligatoire pour créer un étudiant");
         }
 
-        Universite universite = universiteRepository.findById(request.getUniversiteId())
-                .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
+        // Pour un étudiant, on prend la première université (relation ManyToOne)
+        Universite universite = universiteRepository.findById(request.getUniversiteIds().get(0))
+                .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteIds().get(0)));
 
         User user = new User();
         user.setId(UUID.randomUUID().toString());
@@ -401,7 +404,7 @@ public class AdminService {
                         e.getUniversite().getTelephone(),
                         e.getUniversite().getNbEtudiants(),
                         e.getUniversite().getHoraire(),
-                        e.getUniversite().getLogoPath(),
+                        e.getUniversite().getLogoPath() != null ? "/uploads/" + e.getUniversite().getLogoPath() : null,
                         e.getUniversite().getCode()
                 );
             }
@@ -414,9 +417,9 @@ public class AdminService {
                     e.getTelephone(),
                     e.getPhotoPath() != null ? "/users/me/photo" : null,
                     universiteResponse,
-                    e.getGenre(),        // Ajout du genre
-                    e.getSituation(),     // Ajout de la situation
-                    e.getNiveauEtude()    // Ajout du niveau d'étude
+                    e.getGenre(),
+                    e.getSituation(),
+                    e.getNiveauEtude()
             );
         }).toList();
     }
@@ -436,7 +439,7 @@ public class AdminService {
                     e.getUniversite().getTelephone(),
                     e.getUniversite().getNbEtudiants(),
                     e.getUniversite().getHoraire(),
-                    e.getUniversite().getLogoPath(),
+                    e.getUniversite().getLogoPath() != null ? "/uploads/" + e.getUniversite().getLogoPath() : null,
                     e.getUniversite().getCode()
             );
 
@@ -448,9 +451,9 @@ public class AdminService {
                     e.getTelephone(),
                     e.getPhotoPath() != null ? "/users/me/photo" : null,
                     universiteResponse,
-                    e.getGenre(),        // Ajout du genre
-                    e.getSituation(),     // Ajout de la situation
-                    e.getNiveauEtude()    // Ajout du niveau d'étude
+                    e.getGenre(),
+                    e.getSituation(),
+                    e.getNiveauEtude()
             );
         }).toList();
     }
@@ -474,7 +477,6 @@ public class AdminService {
         if (request.getTelephone() != null) {
             user.setTelephone(request.getTelephone());
         }
-        // Nouveaux champs pour l'étudiant
         if (request.getGenre() != null) {
             user.setGenre(request.getGenre());
         }
@@ -485,9 +487,9 @@ public class AdminService {
             user.setNiveauEtude(request.getNiveauEtude());
         }
 
-        if (request.getUniversiteId() != null) {
-            Universite universite = universiteRepository.findById(request.getUniversiteId())
-                    .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteId()));
+        if (request.getUniversiteIds() != null && !request.getUniversiteIds().isEmpty()) {
+            Universite universite = universiteRepository.findById(request.getUniversiteIds().get(0))
+                    .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteIds().get(0)));
             user.setUniversite(universite);
         }
 

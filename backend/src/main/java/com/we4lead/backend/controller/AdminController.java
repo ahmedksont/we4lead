@@ -52,8 +52,8 @@ public class AdminController {
     @PostMapping("/medecins")
     public ResponseEntity<Map<String, Object>> createMedecin(@RequestBody UserCreateRequest request) {
         // Validate required fields
-        if (request.getUniversiteId() == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "L'université est obligatoire"));
+        if (request.getUniversiteIds() == null || request.getUniversiteIds().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Au moins une université est obligatoire"));
         }
 
         // Validate specialite for medecin
@@ -119,9 +119,9 @@ public class AdminController {
 
     @PostMapping("/etudiants")
     public ResponseEntity<Map<String, Object>> createEtudiant(@RequestBody UserCreateRequest request) {
-        // Validate university ID
-        if (request.getUniversiteId() == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "L'université est obligatoire"));
+        // Validate university IDs
+        if (request.getUniversiteIds() == null || request.getUniversiteIds().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Au moins une université est obligatoire"));
         }
 
         // Validate email
