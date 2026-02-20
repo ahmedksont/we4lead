@@ -4,6 +4,7 @@ import com.we4lead.backend.dto.*;
 import com.we4lead.backend.entity.Rdv;
 import com.we4lead.backend.entity.User;
 import com.we4lead.backend.service.AdminService;
+import com.we4lead.backend.Repository.UniversiteRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin")
@@ -18,10 +20,34 @@ import java.util.Map;
 public class AdminController {
 
     private final AdminService adminService;
+    private final UniversiteRepository universiteRepository;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, UniversiteRepository universiteRepository) {
         this.adminService = adminService;
+        this.universiteRepository = universiteRepository;
     }
+
+    // ================= UNIVERSITES =================
+
+    @GetMapping("/universites")
+    public List<UniversiteResponse> getAllUniversites() {
+        return universiteRepository.findAll()
+                .stream()
+                .map(u -> new UniversiteResponse(
+                        u.getId(),
+                        u.getNom(),
+                        u.getVille(),
+                        u.getAdresse(),
+                        u.getTelephone(),
+                        u.getNbEtudiants(),
+                        u.getHoraire(),
+                        u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
+                        u.getCode()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    // ================= MEDECINS CRUD =================
 
     @PostMapping("/medecins")
     public ResponseEntity<Map<String, Object>> createMedecin(@RequestBody UserCreateRequest request) {
