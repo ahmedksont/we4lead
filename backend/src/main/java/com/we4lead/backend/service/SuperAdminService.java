@@ -83,11 +83,7 @@ public class SuperAdminService {
 
         universiteRepository.deleteById(id);
     }
-
-
-
     private void mapRequestToUniversite(UniversiteRequest request, Universite uni) throws IOException {
-
         uni.setNom(request.getNom());
         uni.setVille(request.getVille());
         uni.setAdresse(request.getAdresse());
@@ -97,15 +93,18 @@ public class SuperAdminService {
 
         MultipartFile logo = request.getLogo();
         if (logo != null && !logo.isEmpty()) {
-
-            String filename = StringUtils.cleanPath(
-                    uni.getNom().replaceAll("\\s+", "_") + "_" + logo.getOriginalFilename()
-            );
+            if (uni.getLogoPath() != null) {
+                Path oldFilePath = Paths.get(uploadDir, uni.getLogoPath());
+                Files.deleteIfExists(oldFilePath);
+            }
+            String originalFilename = StringUtils.cleanPath(logo.getOriginalFilename());
+            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            String filename = uni.getNom().replaceAll("\\s+", "_") + "_" +
+                    System.currentTimeMillis() + extension;
 
             Path filePath = Paths.get(uploadDir, filename);
             Files.write(filePath, logo.getBytes());
-
-            uni.setLogoPath("/universites/logos/" + filename);
+            uni.setLogoPath(filename);
         }
     }
     @Transactional

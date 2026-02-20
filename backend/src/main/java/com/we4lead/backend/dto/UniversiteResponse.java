@@ -8,6 +8,6 @@ public record UniversiteResponse(
         String telephone,
         Integer nbEtudiants,
         String horaire,
-        String logoPath,
+        String logoUrl,
         String code
 ) {}

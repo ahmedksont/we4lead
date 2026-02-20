@@ -24,6 +24,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/demandes/public").permitAll()
+                        .requestMatchers("/universites/logos/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/demandes/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/demandes/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/demandes/**").authenticated()
