@@ -1,7 +1,9 @@
 package com.we4lead.backend.controller;
 
 import com.we4lead.backend.dto.*;
+import com.we4lead.backend.entity.Genre;
 import com.we4lead.backend.entity.Rdv;
+import com.we4lead.backend.entity.Situation;
 import com.we4lead.backend.entity.User;
 import com.we4lead.backend.service.AdminService;
 import com.we4lead.backend.Repository.UniversiteRepository;
@@ -9,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,32 +53,31 @@ public class AdminController {
 
     // ================= MEDECINS CRUD =================
 
-    @PostMapping("/medecins")
-    public ResponseEntity<Map<String, Object>> createMedecin(@RequestBody UserCreateRequest request) {
-        // Validate required fields
-        if (request.getUniversiteIds() == null || request.getUniversiteIds().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Au moins une université est obligatoire"));
-        }
-
-        // Validate specialite for medecin
-        if (request.getSpecialite() == null || request.getSpecialite().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "La spécialité est obligatoire pour un médecin"));
-        }
-
-        // Validate email
-        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "L'email est obligatoire"));
-        }
-
-        // Validate nom and prenom
-        if (request.getNom() == null || request.getNom().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Le nom est obligatoire"));
-        }
-        if (request.getPrenom() == null || request.getPrenom().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Le prénom est obligatoire"));
-        }
-
+    @PostMapping(value = "/medecins", consumes = {"multipart/form-data"})
+    public ResponseEntity<Map<String, Object>> createMedecin(@ModelAttribute MedecinCreateRequest medecinRequest) {
         try {
+            // Convertir le DTO multipart en UserCreateRequest
+            UserCreateRequest request = new UserCreateRequest();
+            request.setEmail(medecinRequest.getEmail());
+            request.setNom(medecinRequest.getNom());
+            request.setPrenom(medecinRequest.getPrenom());
+            request.setTelephone(medecinRequest.getTelephone());
+
+            // Parser les universiteIds
+            List<Long> universiteIds = parseUniversiteIds(medecinRequest.getUniversiteIds());
+            request.setUniversiteIds(universiteIds);
+
+            request.setSpecialite(medecinRequest.getSpecialite());
+
+            if (medecinRequest.getGenre() != null) {
+                request.setGenre(Genre.valueOf(medecinRequest.getGenre()));
+            }
+            if (medecinRequest.getSituation() != null) {
+                request.setSituation(Situation.valueOf(medecinRequest.getSituation()));
+            }
+            request.setNiveauEtude(medecinRequest.getNiveauEtude());
+            request.setPhoto(medecinRequest.getPhoto());
+
             User medecin = adminService.createMedecin(request);
 
             Map<String, Object> response = new HashMap<>();
@@ -82,11 +85,32 @@ public class AdminController {
             response.put("medecin", medecin);
 
             return ResponseEntity.ok(response);
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Erreur lors de l'upload de la photo: " + e.getMessage()));
         }
     }
 
+    private List<Long> parseUniversiteIds(String universiteIdsStr) {
+        if (universiteIdsStr == null || universiteIdsStr.isEmpty()) {
+            return List.of();
+        }
+        try {
+            // Enlever les crochets et splitter
+            String cleaned = universiteIdsStr.replace("[", "").replace("]", "").replace(" ", "");
+            if (cleaned.isEmpty()) {
+                return List.of();
+            }
+            String[] parts = cleaned.split(",");
+            return Arrays.stream(parts)
+                    .map(Long::parseLong)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Format invalide pour universiteIds. Utilisez [1,2,3]");
+        }
+    }
     @GetMapping("/medecins")
     public List<MedecinResponse> getAllMedecins() {
         return adminService.getAllMedecins();
@@ -97,8 +121,11 @@ public class AdminController {
         return adminService.getMedecinById(id);
     }
 
-    @PutMapping("/medecins/{id}")
-    public User updateMedecin(@PathVariable String id, @RequestBody UserCreateRequest request) {
+    @PutMapping(value = "/medecins/{id}", consumes = {"multipart/form-data"})
+    public User updateMedecin(
+            @PathVariable String id,
+            @ModelAttribute UserCreateRequest request
+    ) throws IOException {
         return adminService.updateMedecin(id, request);
     }
 
@@ -117,8 +144,8 @@ public class AdminController {
 
     // ================= ETUDIANTS CRUD =================
 
-    @PostMapping("/etudiants")
-    public ResponseEntity<Map<String, Object>> createEtudiant(@RequestBody UserCreateRequest request) {
+    @PostMapping(value = "/etudiants", consumes = {"multipart/form-data"})
+    public ResponseEntity<Map<String, Object>> createEtudiant(@ModelAttribute UserCreateRequest request) {
         // Validate university IDs
         if (request.getUniversiteIds() == null || request.getUniversiteIds().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Au moins une université est obligatoire"));
@@ -165,8 +192,11 @@ public class AdminController {
         return adminService.getEtudiantsByUniversiteId(universiteId);
     }
 
-    @PutMapping("/etudiants/{id}")
-    public User updateEtudiant(@PathVariable String id, @RequestBody UserCreateRequest request) {
+    @PutMapping(value = "/etudiants/{id}", consumes = {"multipart/form-data"})
+    public User updateEtudiant(
+            @PathVariable String id,
+            @ModelAttribute UserCreateRequest request
+    ) throws IOException {
         return adminService.updateEtudiant(id, request);
     }
 
@@ -176,6 +206,7 @@ public class AdminController {
     }
 
     // ================= RDV (APPOINTMENTS) CRUD =================
+
 
     @PostMapping("/rdvs")
     public ResponseEntity<Map<String, Object>> createRdv(@RequestBody RdvRequest request) {
