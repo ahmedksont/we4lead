@@ -11,16 +11,16 @@ public class EtudiantResponse {
     private String telephone;
     private String photoUrl;
     private UniversiteResponse universite;
-
-    // Nouveaux champs
     private Genre genre;
     private Situation situation;
     private String niveauEtude;
+    private long nombreDemandes; // NOUVEAU CHAMP
 
-    // Constructeur avec tous les champs
+    // Constructeur avec tous les champs (y compris nombreDemandes)
     public EtudiantResponse(String id, String nom, String prenom, String email, String telephone,
                             String photoUrl, UniversiteResponse universite,
-                            Genre genre, Situation situation, String niveauEtude) {
+                            Genre genre, Situation situation, String niveauEtude,
+                            long nombreDemandes) {
         this.id = id;
         this.nom = nom;
         this.prenom = prenom;
@@ -31,15 +31,23 @@ public class EtudiantResponse {
         this.genre = genre;
         this.situation = situation;
         this.niveauEtude = niveauEtude;
+        this.nombreDemandes = nombreDemandes;
     }
 
-    // Constructeur sans les nouveaux champs (pour la rétrocompatibilité si nécessaire)
+    // Constructeur sans les nouveaux champs (pour la rétrocompatibilité)
     public EtudiantResponse(String id, String nom, String prenom, String email, String telephone,
                             String photoUrl, UniversiteResponse universite) {
-        this(id, nom, prenom, email, telephone, photoUrl, universite, null, null, null);
+        this(id, nom, prenom, email, telephone, photoUrl, universite, null, null, null, 0);
     }
 
-    // Getters
+    // Constructeur avec les anciens nouveaux champs mais sans nombreDemandes
+    public EtudiantResponse(String id, String nom, String prenom, String email, String telephone,
+                            String photoUrl, UniversiteResponse universite,
+                            Genre genre, Situation situation, String niveauEtude) {
+        this(id, nom, prenom, email, telephone, photoUrl, universite, genre, situation, niveauEtude, 0);
+    }
+
+    // Getters existants
     public String getId() { return id; }
     public String getNom() { return nom; }
     public String getPrenom() { return prenom; }
@@ -47,9 +55,10 @@ public class EtudiantResponse {
     public String getTelephone() { return telephone; }
     public String getPhotoUrl() { return photoUrl; }
     public UniversiteResponse getUniversite() { return universite; }
-
-    // Getters pour les nouveaux champs
     public Genre getGenre() { return genre; }
     public Situation getSituation() { return situation; }
     public String getNiveauEtude() { return niveauEtude; }
+
+    // NOUVEAU getter
+    public long getNombreDemandes() { return nombreDemandes; }
 }

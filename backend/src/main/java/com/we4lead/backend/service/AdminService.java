@@ -1,9 +1,6 @@
     package com.we4lead.backend.service;
 
-    import com.we4lead.backend.Repository.CreneauRepository;
-    import com.we4lead.backend.Repository.RdvRepository;
-    import com.we4lead.backend.Repository.UniversiteRepository;
-    import com.we4lead.backend.Repository.UserRepository;
+    import com.we4lead.backend.Repository.*;
     import com.we4lead.backend.SupabaseAuthService;
     import com.we4lead.backend.dto.*;
     import com.we4lead.backend.entity.*;
@@ -30,6 +27,7 @@
         private final RdvRepository rdvRepository;
         private final UrlService urlService;
         private final SupabaseAuthService supabaseAuthService;
+        private final DemandeRepository demandeRepository;
         private final String uploadDir = "uploads/medecins";
 
         public AdminService(
@@ -37,12 +35,14 @@
                 UniversiteRepository universiteRepository,
                 CreneauRepository creneauRepository,
                 RdvRepository rdvRepository,
+                DemandeRepository demandeRepository,
                 SupabaseAuthService supabaseAuthService,
                 UrlService urlService) {
             this.userRepository = userRepository;
             this.universiteRepository = universiteRepository;
             this.creneauRepository = creneauRepository;
             this.rdvRepository = rdvRepository;
+            this.demandeRepository = demandeRepository;
             this.supabaseAuthService = supabaseAuthService;
             this.urlService = urlService;
             Path path = Paths.get(uploadDir);
@@ -266,21 +266,25 @@
                     );
                 }
 
+                // Compter le nombre de demandes pour cet étudiant
+                long nombreDemandes = demandeRepository.countByEtudiantId(e.getId());
+
                 return new EtudiantResponse(
                         e.getId(),
                         e.getNom(),
                         e.getPrenom(),
                         e.getEmail(),
                         e.getTelephone(),
-                        // 👇 CHANGER ICI - utiliser urlService
                         urlService.getPhotoUrl(e.getPhotoPath()),
                         universiteResponse,
                         e.getGenre(),
                         e.getSituation(),
-                        e.getNiveauEtude()
+                        e.getNiveauEtude(),
+                        nombreDemandes // Nouveau champ
                 );
             }).toList();
         }
+
         public List<EtudiantResponse> getEtudiantsByUniversiteId(Long universiteId) {
             Universite universite = universiteRepository.findById(universiteId)
                     .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
@@ -300,18 +304,21 @@
                         e.getUniversite().getCode()
                 );
 
+                // Compter le nombre de demandes pour cet étudiant
+                long nombreDemandes = demandeRepository.countByEtudiantId(e.getId());
+
                 return new EtudiantResponse(
                         e.getId(),
                         e.getNom(),
                         e.getPrenom(),
                         e.getEmail(),
                         e.getTelephone(),
-                        // 👇 CHANGER ICI - utiliser urlService
                         urlService.getPhotoUrl(e.getPhotoPath()),
                         universiteResponse,
                         e.getGenre(),
                         e.getSituation(),
-                        e.getNiveauEtude()
+                        e.getNiveauEtude(),
+                        nombreDemandes // Nouveau champ
                 );
             }).toList();
         }
