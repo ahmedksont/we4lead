@@ -17,12 +17,29 @@ public class UrlService {
             return null;
         }
 
-        // Si c'est déjà une URL complète, la retourner directement
         if (logoPath.startsWith("http")) {
             return logoPath;
         }
 
-        // Construire l'URL complète
         return baseUrl + "/universites/logos/" + logoPath;
+    }
+
+    public String getPhotoUrl(String photoPath) {
+        if (photoPath == null || photoPath.isEmpty()) {
+            return null;
+        }
+
+        // Si c'est déjà une URL complète
+        if (photoPath.startsWith("http")) {
+            return photoPath;
+        }
+
+        // Si le chemin commence déjà par /uploads/ (pour la rétrocompatibilité)
+        if (photoPath.startsWith("/uploads/")) {
+            return baseUrl + photoPath;
+        }
+
+        // Sinon, construire l'URL complète avec le nom du fichier seulement
+        return baseUrl + "/uploads/medecins/" + photoPath;
     }
 }

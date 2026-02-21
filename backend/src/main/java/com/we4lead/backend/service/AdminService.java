@@ -28,6 +28,7 @@
         private final UniversiteRepository universiteRepository;
         private final CreneauRepository creneauRepository;
         private final RdvRepository rdvRepository;
+        private final UrlService urlService;
         private final SupabaseAuthService supabaseAuthService;
         private final String uploadDir = "uploads/medecins";
 
@@ -36,12 +37,14 @@
                 UniversiteRepository universiteRepository,
                 CreneauRepository creneauRepository,
                 RdvRepository rdvRepository,
-                SupabaseAuthService supabaseAuthService) {
+                SupabaseAuthService supabaseAuthService,
+                UrlService urlService) {
             this.userRepository = userRepository;
             this.universiteRepository = universiteRepository;
             this.creneauRepository = creneauRepository;
             this.rdvRepository = rdvRepository;
             this.supabaseAuthService = supabaseAuthService;
+            this.urlService = urlService;
             Path path = Paths.get(uploadDir);
             if (!Files.exists(path)) {
                 try {
@@ -117,116 +120,15 @@
             // Sauvegarder le fichier
             Files.write(filePath, photo.getBytes());
 
-            // Retourner le chemin relatif pour la base de données
-            return "/uploads/medecins/" + filename;
+            // 👇 CHANGER ICI - retourner seulement le nom du fichier, pas le chemin complet
+            return filename;  // ← Au lieu de "/uploads/medecins/" + filename
+
         }
 
         public List<MedecinResponse> getAllMedecins() {
             List<User> medecins = userRepository.findByRole(Role.MEDECIN);
-
-            return medecins.stream().map(m -> {
-                List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(m.getId())
-                        .stream()
-                        .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
-                        .toList();
-
-                List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
-                        .stream()
-                        .map(r -> {
-                            List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
-                                    .map(u -> new UniversiteResponse(
-                                            u.getId(),
-                                            u.getNom(),
-                                            u.getVille(),
-                                            u.getAdresse(),
-                                            u.getTelephone(),
-                                            u.getNbEtudiants(),
-                                            u.getHoraire(),
-                                            u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
-                                            u.getCode()
-                                    ))
-                                    .toList();
-
-                            MedecinResponse rdvMedecinResponse = new MedecinResponse(
-                                    r.getMedecin().getId(),
-                                    r.getMedecin().getNom(),
-                                    r.getMedecin().getPrenom(),
-                                    r.getMedecin().getEmail(),
-                                    r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
-                                    r.getMedecin().getTelephone(),
-                                    r.getMedecin().getSpecialite(),
-                                    medecinUniversites,
-                                    List.of(),
-                                    List.of()
-                            );
-
-                            UniversiteResponse etudiantUniversite = null;
-                            if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
-                                etudiantUniversite = new UniversiteResponse(
-                                        r.getEtudiant().getUniversite().getId(),
-                                        r.getEtudiant().getUniversite().getNom(),
-                                        r.getEtudiant().getUniversite().getVille(),
-                                        r.getEtudiant().getUniversite().getAdresse(),
-                                        r.getEtudiant().getUniversite().getTelephone(),
-                                        r.getEtudiant().getUniversite().getNbEtudiants(),
-                                        r.getEtudiant().getUniversite().getHoraire(),
-                                        r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,
-                                        r.getEtudiant().getUniversite().getCode()
-                                );
-                            }
-
-                            EtudiantResponse etudiantResponse = r.getEtudiant() != null ?
-                                    new EtudiantResponse(
-                                            r.getEtudiant().getId(),
-                                            r.getEtudiant().getNom(),
-                                            r.getEtudiant().getPrenom(),
-                                            r.getEtudiant().getEmail(),
-                                            r.getEtudiant().getTelephone(),
-                                            r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                                            etudiantUniversite,
-                                            r.getEtudiant().getGenre(),
-                                            r.getEtudiant().getSituation(),
-                                            r.getEtudiant().getNiveauEtude()
-                                    ) : null;
-
-                            return new RdvResponse(
-                                    r.getId(),
-                                    r.getDate(),
-                                    r.getHeure(),
-                                    r.getStatus() != null ? r.getStatus().name() : "CONFIRMED",
-                                    rdvMedecinResponse,
-                                    etudiantResponse
-                            );
-                        })
-                        .toList();
-
-                List<UniversiteResponse> universiteResponses = m.getUniversites().stream()
-                        .map(u -> new UniversiteResponse(
-                                u.getId(),
-                                u.getNom(),
-                                u.getVille(),
-                                u.getAdresse(),
-                                u.getTelephone(),
-                                u.getNbEtudiants(),
-                                u.getHoraire(),
-                                u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
-                                u.getCode()
-                        ))
-                        .toList();
-
-                return new MedecinResponse(
-                        m.getId(),
-                        m.getNom(),
-                        m.getPrenom(),
-                        m.getEmail(),
-                        m.getPhotoPath() != null ? "/users/me/photo" : null,
-                        m.getTelephone(),
-                        m.getSpecialite(),
-                        universiteResponses,
-                        creneaux,
-                        rdvs
-                );
-            }).toList();
+            // 👇 UTILISER mapToMedecinResponse AU LIEU DE CONSTRUIRE MANUELLEMENT
+            return medecins.stream().map(this::mapToMedecinResponse).toList();
         }
 
         public User getMedecinById(String id) {
@@ -310,112 +212,9 @@
                     .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
 
             List<User> medecins = userRepository.findByUniversiteIdAndRole(universiteId, Role.MEDECIN);
-
-            return medecins.stream().map(m -> {
-                List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(m.getId())
-                        .stream()
-                        .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
-                        .toList();
-
-                List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(m.getId())
-                        .stream()
-                        .map(r -> {
-                            List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
-                                    .map(u -> new UniversiteResponse(
-                                            u.getId(),
-                                            u.getNom(),
-                                            u.getVille(),
-                                            u.getAdresse(),
-                                            u.getTelephone(),
-                                            u.getNbEtudiants(),
-                                            u.getHoraire(),
-                                            u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
-                                            u.getCode()
-                                    ))
-                                    .toList();
-
-                            MedecinResponse rdvMedecinResponse = new MedecinResponse(
-                                    r.getMedecin().getId(),
-                                    r.getMedecin().getNom(),
-                                    r.getMedecin().getPrenom(),
-                                    r.getMedecin().getEmail(),
-                                    r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
-                                    r.getMedecin().getTelephone(),
-                                    r.getMedecin().getSpecialite(),
-                                    medecinUniversites,
-                                    List.of(),
-                                    List.of()
-                            );
-
-                            UniversiteResponse etudiantUniversite = null;
-                            if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
-                                etudiantUniversite = new UniversiteResponse(
-                                        r.getEtudiant().getUniversite().getId(),
-                                        r.getEtudiant().getUniversite().getNom(),
-                                        r.getEtudiant().getUniversite().getVille(),
-                                        r.getEtudiant().getUniversite().getAdresse(),
-                                        r.getEtudiant().getUniversite().getTelephone(),
-                                        r.getEtudiant().getUniversite().getNbEtudiants(),
-                                        r.getEtudiant().getUniversite().getHoraire(),
-                                        r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,
-                                        r.getEtudiant().getUniversite().getCode()
-                                );
-                            }
-
-                            EtudiantResponse etudiantResponse = r.getEtudiant() != null ?
-                                    new EtudiantResponse(
-                                            r.getEtudiant().getId(),
-                                            r.getEtudiant().getNom(),
-                                            r.getEtudiant().getPrenom(),
-                                            r.getEtudiant().getEmail(),
-                                            r.getEtudiant().getTelephone(),
-                                            r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
-                                            etudiantUniversite,
-                                            r.getEtudiant().getGenre(),
-                                            r.getEtudiant().getSituation(),
-                                            r.getEtudiant().getNiveauEtude()
-                                    ) : null;
-
-                            return new RdvResponse(
-                                    r.getId(),
-                                    r.getDate(),
-                                    r.getHeure(),
-                                    r.getStatus() != null ? r.getStatus().name() : "CONFIRMED",
-                                    rdvMedecinResponse,
-                                    etudiantResponse
-                            );
-                        })
-                        .toList();
-
-                List<UniversiteResponse> universiteResponses = m.getUniversites().stream()
-                        .map(u -> new UniversiteResponse(
-                                u.getId(),
-                                u.getNom(),
-                                u.getVille(),
-                                u.getAdresse(),
-                                u.getTelephone(),
-                                u.getNbEtudiants(),
-                                u.getHoraire(),
-                                u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
-                                u.getCode()
-                        ))
-                        .toList();
-
-                return new MedecinResponse(
-                        m.getId(),
-                        m.getNom(),
-                        m.getPrenom(),
-                        m.getEmail(),
-                        m.getPhotoPath() != null ? "/users/me/photo" : null,
-                        m.getTelephone(),
-                        m.getSpecialite(),
-                        universiteResponses,
-                        creneaux,
-                        rdvs
-                );
-            }).toList();
+            // 👇 UTILISER mapToMedecinResponse AU LIEU DE CONSTRUIRE MANUELLEMENT
+            return medecins.stream().map(this::mapToMedecinResponse).toList();
         }
-
         @Transactional
         public User createEtudiant(UserCreateRequest request) {
             if (request.getUniversiteIds() == null || request.getUniversiteIds().isEmpty()) {
@@ -473,7 +272,8 @@
                         e.getPrenom(),
                         e.getEmail(),
                         e.getTelephone(),
-                        e.getPhotoPath() != null ? "/users/me/photo" : null,
+                        // 👇 CHANGER ICI - utiliser urlService
+                        urlService.getPhotoUrl(e.getPhotoPath()),
                         universiteResponse,
                         e.getGenre(),
                         e.getSituation(),
@@ -481,7 +281,6 @@
                 );
             }).toList();
         }
-
         public List<EtudiantResponse> getEtudiantsByUniversiteId(Long universiteId) {
             Universite universite = universiteRepository.findById(universiteId)
                     .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + universiteId));
@@ -507,7 +306,8 @@
                         e.getPrenom(),
                         e.getEmail(),
                         e.getTelephone(),
-                        e.getPhotoPath() != null ? "/users/me/photo" : null,
+                        // 👇 CHANGER ICI - utiliser urlService
+                        urlService.getPhotoUrl(e.getPhotoPath()),
                         universiteResponse,
                         e.getGenre(),
                         e.getSituation(),
@@ -629,7 +429,6 @@
             rdv.setEtudiant(etudiant);
             return rdvRepository.save(rdv);
         }
-
         public List<RdvResponse> getAllRdvs() {
             List<Rdv> rdvs = rdvRepository.findAll();
 
@@ -643,19 +442,20 @@
                                 u.getTelephone(),
                                 u.getNbEtudiants(),
                                 u.getHoraire(),
-                                u.getLogoPath(),
+                                u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
                                 u.getCode()
                         ))
                         .toList();
 
+                // CORRECTION 1: Utiliser urlService.getPhotoUrl() avec le paramètre photoPath
                 MedecinResponse medecinResponse = new MedecinResponse(
                         r.getMedecin().getId(),
                         r.getMedecin().getNom(),
                         r.getMedecin().getPrenom(),
                         r.getMedecin().getEmail(),
-                        r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
+                        urlService.getPhotoUrl(r.getMedecin().getPhotoPath()),  // ← CORRIGÉ
                         r.getMedecin().getTelephone(),
-                        r.getMedecin().getSpecialite(), // Ajout de la spécialité
+                        r.getMedecin().getSpecialite(),
                         medecinUniversites,
                         List.of(),
                         List.of()
@@ -671,22 +471,23 @@
                             r.getEtudiant().getUniversite().getTelephone(),
                             r.getEtudiant().getUniversite().getNbEtudiants(),
                             r.getEtudiant().getUniversite().getHoraire(),
-                            r.getEtudiant().getUniversite().getLogoPath(),
+                            r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,
                             r.getEtudiant().getUniversite().getCode()
                     );
                 }
 
+                // CORRECTION 2: Utiliser urlService.getPhotoUrl() pour l'étudiant aussi
                 EtudiantResponse etudiantResponse = new EtudiantResponse(
                         r.getEtudiant().getId(),
                         r.getEtudiant().getNom(),
                         r.getEtudiant().getPrenom(),
                         r.getEtudiant().getEmail(),
                         r.getEtudiant().getTelephone(),
-                        r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
+                        urlService.getPhotoUrl(r.getEtudiant().getPhotoPath()),  // ← CORRIGÉ
                         etudiantUniversite,
-                        r.getEtudiant().getGenre(),      // Ajout du genre
-                        r.getEtudiant().getSituation(),   // Ajout de la situation
-                        r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
+                        r.getEtudiant().getGenre(),
+                        r.getEtudiant().getSituation(),
+                        r.getEtudiant().getNiveauEtude()
                 );
 
                 return new RdvResponse(
@@ -713,19 +514,20 @@
                             u.getTelephone(),
                             u.getNbEtudiants(),
                             u.getHoraire(),
-                            u.getLogoPath(),
+                            u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,  // ← CORRIGÉ
                             u.getCode()
                     ))
                     .toList();
 
+            // CORRECTION 1: Utiliser urlService pour la photo du médecin
             MedecinResponse medecinResponse = new MedecinResponse(
                     rdv.getMedecin().getId(),
                     rdv.getMedecin().getNom(),
                     rdv.getMedecin().getPrenom(),
                     rdv.getMedecin().getEmail(),
-                    rdv.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
+                    urlService.getPhotoUrl(rdv.getMedecin().getPhotoPath()),  // ← CORRIGÉ
                     rdv.getMedecin().getTelephone(),
-                    rdv.getMedecin().getSpecialite(), // Ajout de la spécialité
+                    rdv.getMedecin().getSpecialite(),
                     medecinUniversites,
                     List.of(),
                     List.of()
@@ -741,22 +543,23 @@
                         rdv.getEtudiant().getUniversite().getTelephone(),
                         rdv.getEtudiant().getUniversite().getNbEtudiants(),
                         rdv.getEtudiant().getUniversite().getHoraire(),
-                        rdv.getEtudiant().getUniversite().getLogoPath(),
+                        rdv.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + rdv.getEtudiant().getUniversite().getLogoPath() : null,  // ← CORRIGÉ
                         rdv.getEtudiant().getUniversite().getCode()
                 );
             }
 
+            // CORRECTION 2: Utiliser urlService pour la photo de l'étudiant
             EtudiantResponse etudiantResponse = new EtudiantResponse(
                     rdv.getEtudiant().getId(),
                     rdv.getEtudiant().getNom(),
                     rdv.getEtudiant().getPrenom(),
                     rdv.getEtudiant().getEmail(),
                     rdv.getEtudiant().getTelephone(),
-                    rdv.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
+                    urlService.getPhotoUrl(rdv.getEtudiant().getPhotoPath()),  // ← CORRIGÉ
                     etudiantUniversite,
-                    rdv.getEtudiant().getGenre(),      // Ajout du genre
-                    rdv.getEtudiant().getSituation(),   // Ajout de la situation
-                    rdv.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
+                    rdv.getEtudiant().getGenre(),
+                    rdv.getEtudiant().getSituation(),
+                    rdv.getEtudiant().getNiveauEtude()
             );
 
             return new RdvResponse(
@@ -768,7 +571,6 @@
                     etudiantResponse
             );
         }
-
         @Transactional
         public Rdv updateRdv(String id, RdvUpdateRequest request) {
             Rdv rdv = rdvRepository.findById(id)
@@ -815,19 +617,20 @@
                                 u.getTelephone(),
                                 u.getNbEtudiants(),
                                 u.getHoraire(),
-                                u.getLogoPath(),
+                                u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,  // ← CORRIGÉ
                                 u.getCode()
                         ))
                         .toList();
 
+                // CORRECTION 1: Utiliser urlService pour la photo du médecin
                 MedecinResponse medecinResponse = new MedecinResponse(
                         r.getMedecin().getId(),
                         r.getMedecin().getNom(),
                         r.getMedecin().getPrenom(),
                         r.getMedecin().getEmail(),
-                        r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
+                        urlService.getPhotoUrl(r.getMedecin().getPhotoPath()),  // ← CORRIGÉ
                         r.getMedecin().getTelephone(),
-                        r.getMedecin().getSpecialite(), // Ajout de la spécialité
+                        r.getMedecin().getSpecialite(),
                         medecinUniversites,
                         List.of(),
                         List.of()
@@ -843,22 +646,23 @@
                             r.getEtudiant().getUniversite().getTelephone(),
                             r.getEtudiant().getUniversite().getNbEtudiants(),
                             r.getEtudiant().getUniversite().getHoraire(),
-                            r.getEtudiant().getUniversite().getLogoPath(),
+                            r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,  // ← CORRIGÉ
                             r.getEtudiant().getUniversite().getCode()
                     );
                 }
 
+                // CORRECTION 2: Utiliser urlService pour la photo de l'étudiant
                 EtudiantResponse etudiantResponse = new EtudiantResponse(
                         r.getEtudiant().getId(),
                         r.getEtudiant().getNom(),
                         r.getEtudiant().getPrenom(),
                         r.getEtudiant().getEmail(),
                         r.getEtudiant().getTelephone(),
-                        r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
+                        urlService.getPhotoUrl(r.getEtudiant().getPhotoPath()),  // ← CORRIGÉ
                         etudiantUniversite,
-                        r.getEtudiant().getGenre(),      // Ajout du genre
-                        r.getEtudiant().getSituation(),   // Ajout de la situation
-                        r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
+                        r.getEtudiant().getGenre(),
+                        r.getEtudiant().getSituation(),
+                        r.getEtudiant().getNiveauEtude()
                 );
 
                 return new RdvResponse(
@@ -871,7 +675,6 @@
                 );
             }).toList();
         }
-
         public List<RdvResponse> getRdvsByMedecinId(String medecinId) {
             User medecin = userRepository.findById(medecinId)
                     .filter(user -> user.getRole() == Role.MEDECIN)
@@ -889,19 +692,20 @@
                                 u.getTelephone(),
                                 u.getNbEtudiants(),
                                 u.getHoraire(),
-                                u.getLogoPath(),
+                                u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,  // ← CORRIGÉ
                                 u.getCode()
                         ))
                         .toList();
 
+                // CORRECTION 1: Utiliser urlService pour la photo du médecin
                 MedecinResponse medecinResponse = new MedecinResponse(
                         r.getMedecin().getId(),
                         r.getMedecin().getNom(),
                         r.getMedecin().getPrenom(),
                         r.getMedecin().getEmail(),
-                        r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
+                        urlService.getPhotoUrl(r.getMedecin().getPhotoPath()),  // ← CORRIGÉ
                         r.getMedecin().getTelephone(),
-                        r.getMedecin().getSpecialite(), // Ajout de la spécialité
+                        r.getMedecin().getSpecialite(),
                         medecinUniversites,
                         List.of(),
                         List.of()
@@ -917,22 +721,23 @@
                             r.getEtudiant().getUniversite().getTelephone(),
                             r.getEtudiant().getUniversite().getNbEtudiants(),
                             r.getEtudiant().getUniversite().getHoraire(),
-                            r.getEtudiant().getUniversite().getLogoPath(),
+                            r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,  // ← CORRIGÉ
                             r.getEtudiant().getUniversite().getCode()
                     );
                 }
 
+                // CORRECTION 2: Utiliser urlService pour la photo de l'étudiant
                 EtudiantResponse etudiantResponse = new EtudiantResponse(
                         r.getEtudiant().getId(),
                         r.getEtudiant().getNom(),
                         r.getEtudiant().getPrenom(),
                         r.getEtudiant().getEmail(),
                         r.getEtudiant().getTelephone(),
-                        r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
+                        urlService.getPhotoUrl(r.getEtudiant().getPhotoPath()),  // ← CORRIGÉ
                         etudiantUniversite,
-                        r.getEtudiant().getGenre(),      // Ajout du genre
-                        r.getEtudiant().getSituation(),   // Ajout de la situation
-                        r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
+                        r.getEtudiant().getGenre(),
+                        r.getEtudiant().getSituation(),
+                        r.getEtudiant().getNiveauEtude()
                 );
 
                 return new RdvResponse(
@@ -963,19 +768,20 @@
                                 u.getTelephone(),
                                 u.getNbEtudiants(),
                                 u.getHoraire(),
-                                u.getLogoPath(),
+                                u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,  // ← CORRIGÉ
                                 u.getCode()
                         ))
                         .toList();
 
+                // CORRECTION 1: Utiliser urlService pour la photo du médecin
                 MedecinResponse medecinResponse = new MedecinResponse(
                         r.getMedecin().getId(),
                         r.getMedecin().getNom(),
                         r.getMedecin().getPrenom(),
                         r.getMedecin().getEmail(),
-                        r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
+                        urlService.getPhotoUrl(r.getMedecin().getPhotoPath()),  // ← CORRIGÉ
                         r.getMedecin().getTelephone(),
-                        r.getMedecin().getSpecialite(), // Ajout de la spécialité
+                        r.getMedecin().getSpecialite(),
                         medecinUniversites,
                         List.of(),
                         List.of()
@@ -991,22 +797,23 @@
                             r.getEtudiant().getUniversite().getTelephone(),
                             r.getEtudiant().getUniversite().getNbEtudiants(),
                             r.getEtudiant().getUniversite().getHoraire(),
-                            r.getEtudiant().getUniversite().getLogoPath(),
+                            r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,  // ← CORRIGÉ
                             r.getEtudiant().getUniversite().getCode()
                     );
                 }
 
+                // CORRECTION 2: Utiliser urlService pour la photo de l'étudiant
                 EtudiantResponse etudiantResponse = new EtudiantResponse(
                         r.getEtudiant().getId(),
                         r.getEtudiant().getNom(),
                         r.getEtudiant().getPrenom(),
                         r.getEtudiant().getEmail(),
                         r.getEtudiant().getTelephone(),
-                        r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
+                        urlService.getPhotoUrl(r.getEtudiant().getPhotoPath()),  // ← CORRIGÉ
                         etudiantUniversite,
-                        r.getEtudiant().getGenre(),      // Ajout du genre
-                        r.getEtudiant().getSituation(),   // Ajout de la situation
-                        r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
+                        r.getEtudiant().getGenre(),
+                        r.getEtudiant().getSituation(),
+                        r.getEtudiant().getNiveauEtude()
                 );
 
                 return new RdvResponse(
@@ -1035,19 +842,20 @@
                                     u.getTelephone(),
                                     u.getNbEtudiants(),
                                     u.getHoraire(),
-                                    u.getLogoPath(),
+                                    u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,  // ← CORRIGÉ
                                     u.getCode()
                             ))
                             .toList();
 
+                    // CORRECTION 1: Utiliser urlService pour la photo du médecin
                     MedecinResponse medecinResponse = new MedecinResponse(
                             r.getMedecin().getId(),
                             r.getMedecin().getNom(),
                             r.getMedecin().getPrenom(),
                             r.getMedecin().getEmail(),
-                            r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
+                            urlService.getPhotoUrl(r.getMedecin().getPhotoPath()),  // ← CORRIGÉ
                             r.getMedecin().getTelephone(),
-                            r.getMedecin().getSpecialite(), // Ajout de la spécialité
+                            r.getMedecin().getSpecialite(),
                             medecinUniversites,
                             List.of(),
                             List.of()
@@ -1063,22 +871,23 @@
                                 r.getEtudiant().getUniversite().getTelephone(),
                                 r.getEtudiant().getUniversite().getNbEtudiants(),
                                 r.getEtudiant().getUniversite().getHoraire(),
-                                r.getEtudiant().getUniversite().getLogoPath(),
+                                r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,  // ← CORRIGÉ
                                 r.getEtudiant().getUniversite().getCode()
                         );
                     }
 
+                    // CORRECTION 2: Utiliser urlService pour la photo de l'étudiant
                     EtudiantResponse etudiantResponse = new EtudiantResponse(
                             r.getEtudiant().getId(),
                             r.getEtudiant().getNom(),
                             r.getEtudiant().getPrenom(),
                             r.getEtudiant().getEmail(),
                             r.getEtudiant().getTelephone(),
-                            r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
+                            urlService.getPhotoUrl(r.getEtudiant().getPhotoPath()),  // ← CORRIGÉ
                             etudiantUniversite,
-                            r.getEtudiant().getGenre(),      // Ajout du genre
-                            r.getEtudiant().getSituation(),   // Ajout de la situation
-                            r.getEtudiant().getNiveauEtude()  // Ajout du niveau d'étude
+                            r.getEtudiant().getGenre(),
+                            r.getEtudiant().getSituation(),
+                            r.getEtudiant().getNiveauEtude()
                     );
 
                     return new RdvResponse(
@@ -1093,5 +902,124 @@
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Statut invalide. Valeurs acceptées: CONFIRMED, CANCELED");
             }
+        }
+        /**
+         * Maps a User (medecin) to MedecinResponse using UrlService for photo URL
+         */
+        public MedecinResponse mapToMedecinResponse(User medecin) {
+            // Get doctor's creneaux (working hours)
+            List<CreneauResponse> creneaux = creneauRepository.findByMedecin_Id(medecin.getId())
+                    .stream()
+                    .map(c -> new CreneauResponse(c.getId(), c.getJour(), c.getDebut(), c.getFin()))
+                    .toList();
+
+            // Get doctor's appointments (rdvs)
+            List<RdvResponse> rdvs = rdvRepository.findByMedecin_Id(medecin.getId())
+                    .stream()
+                    .map(this::mapToRdvResponse)
+                    .toList();
+
+            // Convert doctor's universities to UniversiteResponse
+            List<UniversiteResponse> universiteResponses = medecin.getUniversites().stream()
+                    .map(u -> new UniversiteResponse(
+                            u.getId(),
+                            u.getNom(),
+                            u.getVille(),
+                            u.getAdresse(),
+                            u.getTelephone(),
+                            u.getNbEtudiants(),
+                            u.getHoraire(),
+                            u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
+                            u.getCode()
+                    ))
+                    .toList();
+
+            // Utiliser UrlService pour générer l'URL de la photo
+            String photoUrl = urlService.getPhotoUrl(medecin.getPhotoPath());
+
+            return new MedecinResponse(
+                    medecin.getId(),
+                    medecin.getNom(),
+                    medecin.getPrenom(),
+                    medecin.getEmail(),
+                    photoUrl,
+                    medecin.getTelephone(),
+                    medecin.getSpecialite(),
+                    universiteResponses,
+                    creneaux,
+                    rdvs
+            );
+        }
+
+        private RdvResponse mapToRdvResponse(com.we4lead.backend.entity.Rdv r) {
+            // Convert doctor universities
+            List<UniversiteResponse> medecinUniversites = r.getMedecin().getUniversites().stream()
+                    .map(u -> new UniversiteResponse(
+                            u.getId(),
+                            u.getNom(),
+                            u.getVille(),
+                            u.getAdresse(),
+                            u.getTelephone(),
+                            u.getNbEtudiants(),
+                            u.getHoraire(),
+                            u.getLogoPath() != null ? "/uploads/" + u.getLogoPath() : null,
+                            u.getCode()
+                    ))
+                    .toList();
+
+            // Create MedecinResponse for the RDV avec tous les champs
+            MedecinResponse rdvMedecinResponse = new MedecinResponse(
+                    r.getMedecin().getId(),
+                    r.getMedecin().getNom(),
+                    r.getMedecin().getPrenom(),
+                    r.getMedecin().getEmail(),
+                    urlService.getPhotoUrl(r.getMedecin().getPhotoPath()),
+                    r.getMedecin().getTelephone(),
+                    r.getMedecin().getSpecialite(),
+                    medecinUniversites,
+                    List.of(),
+                    List.of()
+            );
+
+            // Convert student university
+            UniversiteResponse etudiantUniversite = null;
+            if (r.getEtudiant() != null && r.getEtudiant().getUniversite() != null) {
+                etudiantUniversite = new UniversiteResponse(
+                        r.getEtudiant().getUniversite().getId(),
+                        r.getEtudiant().getUniversite().getNom(),
+                        r.getEtudiant().getUniversite().getVille(),
+                        r.getEtudiant().getUniversite().getAdresse(),
+                        r.getEtudiant().getUniversite().getTelephone(),
+                        r.getEtudiant().getUniversite().getNbEtudiants(),
+                        r.getEtudiant().getUniversite().getHoraire(),
+                        r.getEtudiant().getUniversite().getLogoPath() != null ? "/uploads/" + r.getEtudiant().getUniversite().getLogoPath() : null,
+                        r.getEtudiant().getUniversite().getCode()
+                );
+            }
+
+            // Create EtudiantResponse for the RDV avec tous les champs
+            // Create EtudiantResponse for the RDV avec tous les champs
+            EtudiantResponse etudiantResponse = r.getEtudiant() != null ?
+                    new EtudiantResponse(
+                            r.getEtudiant().getId(),
+                            r.getEtudiant().getNom(),
+                            r.getEtudiant().getPrenom(),
+                            r.getEtudiant().getEmail(),
+                            r.getEtudiant().getTelephone(),
+                            urlService.getPhotoUrl(r.getEtudiant().getPhotoPath()),
+                            etudiantUniversite,
+                            r.getEtudiant().getGenre(),
+                            r.getEtudiant().getSituation(),
+                            r.getEtudiant().getNiveauEtude()
+                    ) : null;
+
+            return new RdvResponse(
+                    r.getId(),
+                    r.getDate(),
+                    r.getHeure(),
+                    r.getStatus() != null ? r.getStatus().name() : "CONFIRMED",
+                    rdvMedecinResponse,
+                    etudiantResponse
+            );
         }
     }

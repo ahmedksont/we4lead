@@ -155,18 +155,54 @@ public class UserService {
                 ))
                 .toList();
 
+        // Construire l'URL complète de la photo
+        String photoUrl = buildPhotoUrl(medecin.getPhotoPath());
+
         return new MedecinResponse(
                 medecin.getId(),
                 medecin.getNom(),
                 medecin.getPrenom(),
                 medecin.getEmail(),
-                medecin.getPhotoPath() != null ? "/users/me/photo" : null,
+                photoUrl,
                 medecin.getTelephone(),
-                medecin.getSpecialite(), // Ajout de la spécialité
+                medecin.getSpecialite(),
                 universiteResponses,
                 creneaux,
                 rdvs
         );
+    }
+
+    /**
+     * Construit l'URL complète pour une photo
+     */
+    private String buildPhotoUrl(String photoPath) {
+        if (photoPath == null || photoPath.isEmpty()) {
+            return null;
+        }
+
+        // Si c'est déjà une URL complète
+        if (photoPath.startsWith("http")) {
+            return photoPath;
+        }
+
+        // Si le chemin commence par /uploads/medecins/
+        if (photoPath.contains("/uploads/medecins/")) {
+            // Extraire seulement le nom du fichier si nécessaire
+            if (photoPath.startsWith("/uploads/medecins/")) {
+                return photoPath;
+            }
+            // Sinon, extraire le nom du fichier
+            String filename = photoPath.substring(photoPath.lastIndexOf("/") + 1);
+            return "/uploads/medecins/" + filename;
+        }
+
+        // Si le chemin commence par /uploads/ mais pas medecins
+        if (photoPath.startsWith("/uploads/")) {
+            return photoPath;
+        }
+
+        // Sinon, c'est juste le nom du fichier
+        return "/uploads/medecins/" + photoPath;
     }
 
     /**
@@ -188,15 +224,18 @@ public class UserService {
                 ))
                 .toList();
 
+        // Construire l'URL de la photo du médecin
+        String medecinPhotoUrl = buildPhotoUrl(r.getMedecin().getPhotoPath());
+
         // Create MedecinResponse for the RDV avec tous les champs
         MedecinResponse rdvMedecinResponse = new MedecinResponse(
                 r.getMedecin().getId(),
                 r.getMedecin().getNom(),
                 r.getMedecin().getPrenom(),
                 r.getMedecin().getEmail(),
-                r.getMedecin().getPhotoPath() != null ? "/users/me/photo" : null,
+                medecinPhotoUrl,
                 r.getMedecin().getTelephone(),
-                r.getMedecin().getSpecialite(), // Ajout de la spécialité
+                r.getMedecin().getSpecialite(),
                 medecinUniversites,
                 List.of(),
                 List.of()
@@ -218,6 +257,9 @@ public class UserService {
             );
         }
 
+        // Construire l'URL de la photo de l'étudiant
+        String etudiantPhotoUrl = buildPhotoUrl(r.getEtudiant() != null ? r.getEtudiant().getPhotoPath() : null);
+
         // Create EtudiantResponse for the RDV avec tous les champs
         EtudiantResponse etudiantResponse = r.getEtudiant() != null ?
                 new EtudiantResponse(
@@ -226,11 +268,11 @@ public class UserService {
                         r.getEtudiant().getPrenom(),
                         r.getEtudiant().getEmail(),
                         r.getEtudiant().getTelephone(),
-                        r.getEtudiant().getPhotoPath() != null ? "/users/me/photo" : null,
+                        etudiantPhotoUrl,
                         etudiantUniversite,
-                        r.getEtudiant().getGenre(), // Ajout du genre
-                        r.getEtudiant().getSituation(), // Ajout de la situation
-                        r.getEtudiant().getNiveauEtude() // Ajout du niveau d'étude
+                        r.getEtudiant().getGenre(),
+                        r.getEtudiant().getSituation(),
+                        r.getEtudiant().getNiveauEtude()
                 ) : null;
 
         return new RdvResponse(
