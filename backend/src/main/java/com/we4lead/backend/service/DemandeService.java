@@ -38,19 +38,23 @@ public class DemandeService {
      * Crée une demande avec création automatique de l'étudiant s'il n'existe pas
      * et envoie un email au médecin concerné
      */
+    /**
+     * Crée une demande avec création automatique de l'étudiant s'il n'existe pas
+     * et envoie un email au médecin concerné
+     */
     @Transactional
     public DemandeResponse createDemandeWithStudent(DemandeWithStudentRequest request) {
         // Valider les champs obligatoires
         validateRequest(request);
 
-        // Récupérer ou créer l'étudiant
-        User etudiant = getOrCreateStudent(request);
-
-        // Récupérer l'université
+        // Récupérer l'université d'abord (nécessaire pour la création de l'étudiant)
         Universite universite = universiteRepository.findById(request.getUniversiteId())
                 .orElseThrow(() -> new IllegalArgumentException("Université non trouvée avec l'ID: " + request.getUniversiteId()));
 
-        // Vérifier que l'étudiant est associé à cette université
+        // Récupérer ou créer l'étudiant (maintenant avec l'université)
+        User etudiant = getOrCreateStudent(request, universite);
+
+        // Vérifier que l'étudiant est associé à cette université (au cas où l'étudiant existait déjà)
         if (!etudiant.getUniversites().contains(universite)) {
             etudiant.getUniversites().add(universite);
             userRepository.save(etudiant);
@@ -76,9 +80,6 @@ public class DemandeService {
                 throw new IllegalArgumentException("L'utilisateur avec l'ID " + request.getMedecinId() + " n'est pas un médecin");
             }
 
-            // SUPPRIMÉ : Vérification que le médecin appartient à la même université
-            // Le médecin peut être de n'importe quelle université ou même sans université
-
             demande.setMedecin(medecin);
         }
 
@@ -89,6 +90,31 @@ public class DemandeService {
         sendEmails(response, etudiant, medecin, universite);
 
         return response;
+    }
+
+    /**
+     * Récupère un étudiant par email ou le crée s'il n'existe pas
+     */
+    private User getOrCreateStudent(DemandeWithStudentRequest request, Universite universite) {
+        return userRepository.findByEmail(request.getEmail())
+                .orElseGet(() -> {
+                    User newStudent = new User();
+                    newStudent.setId(UUID.randomUUID().toString());
+                    newStudent.setEmail(request.getEmail());
+                    newStudent.setNom(request.getNom());
+                    newStudent.setPrenom(request.getPrenom());
+                    newStudent.setTelephone(request.getTelephone());
+                    newStudent.setRole(Role.ETUDIANT);
+                    newStudent.setGenre(request.getGenre());
+                    newStudent.setSituation(request.getSituation());
+                    newStudent.setNiveauEtude(request.getNiveauEtude());
+
+                    // Associer l'université à l'étudiant
+                    newStudent.getUniversites().add(universite);
+                    newStudent.setUniversite(universite);
+
+                    return userRepository.save(newStudent);
+                });
     }
 
     /**
