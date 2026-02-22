@@ -288,7 +288,7 @@ public class DemandeService {
     /**
      * Convertit une entité Demande en DTO DemandeResponse
      */
-    private DemandeResponse mapToResponse(Demande demande) {
+    DemandeResponse mapToResponse(Demande demande) {
         User etudiant = demande.getEtudiant();
         User medecin = demande.getMedecin();
         Universite universite = demande.getUniversite();

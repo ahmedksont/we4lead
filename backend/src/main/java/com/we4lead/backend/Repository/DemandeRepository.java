@@ -53,13 +53,37 @@ public interface DemandeRepository extends JpaRepository<Demande, String> {
     @Query("SELECT d.typeSituation, COUNT(d) FROM Demande d WHERE d.etudiant.id = :etudiantId GROUP BY d.typeSituation")
     List<Object[]> countDemandesByTypeForEtudiant(@Param("etudiantId") String etudiantId);
 
-    // Obtenir le nombre de demandes par mois pour un étudiant
-    @Query("SELECT FUNCTION('MONTH', d.dateCreation), FUNCTION('YEAR', d.dateCreation), COUNT(d) " +
+    // Obtenir le nombre de demandes par mois pour un étudiant - Version PostgreSQL
+    @Query("SELECT EXTRACT(YEAR FROM d.dateCreation), EXTRACT(MONTH FROM d.dateCreation), COUNT(d) " +
             "FROM Demande d WHERE d.etudiant.id = :etudiantId " +
-            "GROUP BY FUNCTION('YEAR', d.dateCreation), FUNCTION('MONTH', d.dateCreation) " +
-            "ORDER BY FUNCTION('YEAR', d.dateCreation) DESC, FUNCTION('MONTH', d.dateCreation) DESC")
+            "GROUP BY EXTRACT(YEAR FROM d.dateCreation), EXTRACT(MONTH FROM d.dateCreation) " +
+            "ORDER BY EXTRACT(YEAR FROM d.dateCreation) DESC, EXTRACT(MONTH FROM d.dateCreation) DESC")
     List<Object[]> countDemandesByMonthForEtudiant(@Param("etudiantId") String etudiantId);
 
     // Vérifier si un étudiant a des demandes
     boolean existsByEtudiantId(String etudiantId);
+
+    // Récupérer les 5 dernières demandes (global)
+    List<Demande> findTop5ByOrderByDateCreationDesc();
+
+    // Compter les demandes par type (global)
+    @Query("SELECT d.typeSituation, COUNT(d) FROM Demande d GROUP BY d.typeSituation")
+    List<Object[]> countDemandesByType();
+
+    // Compter les demandes par mois (global) - Version PostgreSQL
+    @Query("SELECT EXTRACT(YEAR FROM d.dateCreation), EXTRACT(MONTH FROM d.dateCreation), COUNT(d) " +
+            "FROM Demande d " +
+            "GROUP BY EXTRACT(YEAR FROM d.dateCreation), EXTRACT(MONTH FROM d.dateCreation) " +
+            "ORDER BY EXTRACT(YEAR FROM d.dateCreation) DESC, EXTRACT(MONTH FROM d.dateCreation) DESC")
+    List<Object[]> countDemandesByMonth();
+
+    // Compter les demandes totales
+    long count();
+
+    // Récupérer les 5 dernières demandes pour une université
+    List<Demande> findTop5ByUniversiteIdOrderByDateCreationDesc(Long universiteId);
+
+    // Compter les demandes par type pour une université
+    @Query("SELECT d.typeSituation, COUNT(d) FROM Demande d WHERE d.universite.id = :universiteId GROUP BY d.typeSituation")
+    List<Object[]> countDemandesByTypeForUniversite(@Param("universiteId") Long universiteId);
 }
