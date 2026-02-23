@@ -36,7 +36,7 @@ public class EmailService {
     @Value("${app.email.logo-type:image/png}")
     private String logoType;
 
-    private static final String PLATFORM_NAME = "We4Lead – Soutien aux étudiants";
+    private static final String PLATFORM_NAME = "We4Lead – Soutien aux étudiants et professeurs";
     private static final String SUPPORT_EMAIL = "support@we4lead.com";
     private static final String WEBSITE_URL   = "https://www.we4lead.com";
 
@@ -87,7 +87,14 @@ public class EmailService {
         mailSender.send(mimeMessage);
     }
 
-    public void sendDemandeToMedecin(User medecin, DemandeResponse demande, String etudiantInfo, String universiteInfo) {
+    /**
+     * Envoie un email au médecin avec les informations de la demande
+     * @param medecin Le médecin destinataire
+     * @param demande La demande
+     * @param userInfo Les informations formatées de l'utilisateur (étudiant ou professeur)
+     * @param universiteInfo Les informations de l'université
+     */
+    public void sendDemandeToMedecin(User medecin, DemandeResponse demande, String userInfo, String universiteInfo) {
         String lieu = demande.getLieuPrincipal() != null ? demande.getLieuPrincipal() : "Non précisé";
 
         // Formatage de la date
@@ -112,7 +119,7 @@ public class EmailService {
                     <div style="padding: 32px 32px 24px;">
                         <h2 style="color: #1a3c5e; margin-top: 0; font-size: 22px;">Cher Docteur %s %s,</h2>
                         
-                        <p>Une demande d'accompagnement vous a été adressée via notre plateforme de soutien aux étudiants.</p>
+                        <p>Une demande d'accompagnement vous a été adressée via notre plateforme de soutien.</p>
                         
                         <h3 style="color: #2c3e50; margin: 28px 0 12px; font-size: 18px;">Détails de la demande</h3>
                         <table style="width:100%%; border-collapse: collapse;">
@@ -123,15 +130,13 @@ public class EmailService {
                             <tr><td style="padding:6px 0; font-weight:bold;">Date de soumission :</td><td>%s</td></tr>
                         </table>
                         
-                        <h3 style="color: #2c3e50; margin: 28px 0 12px; font-size: 18px;">Informations concernant l’étudiant</h3>
+                        <h3 style="color: #2c3e50; margin: 28px 0 12px; font-size: 18px;">Informations concernant la personne</h3>
                         <p style="margin: 0 0 16px;">%s</p>
                         
                         <h3 style="color: #2c3e50; margin: 28px 0 12px; font-size: 18px;">Établissement universitaire</h3>
                         <p style="margin: 0 0 24px;">%s</p>
                         
-       
-                        
-                        <p>Nous vous remercions par avance pour l’attention que vous porterez à cette situation et pour tout contact que vous pourrez établir avec l’étudiant.</p>
+                        <p>Nous vous remercions par avance pour l’attention que vous porterez à cette situation et pour tout contact que vous pourrez établir avec cette personne.</p>
                         
                         <p style="margin-top: 24px;">Restant à votre disposition pour toute précision.</p>
                         
@@ -151,8 +156,8 @@ public class EmailService {
                 demande.getDescription().replace("\n", "<br>"),
                 lieu,
                 demande.getPeriode(),
-                dateSoumission,                    // ← date formatée ici
-                etudiantInfo.replace("\n", "<br>"),
+                dateSoumission,
+                userInfo.replace("\n", "<br>"),
                 universiteInfo.replace("\n", "<br>"),
                 getEmailFooterHtml()
         );
@@ -167,16 +172,28 @@ public class EmailService {
         }
     }
 
-    public void sendDemandeConfirmationToEtudiant(String etudiantEmail, DemandeResponse demande, User medecin) {
+    /**
+     * Envoie un email de confirmation à l'utilisateur (étudiant ou professeur)
+     * @param userEmail L'email de l'utilisateur
+     * @param demande La demande
+     * @param medecin Le médecin concerné (peut être null)
+     * @param userTypeLabel Le libellé du type d'utilisateur ("Étudiant" ou "Professeur")
+     */
+    public void sendDemandeConfirmationToUser(String userEmail, DemandeResponse demande, User medecin, String userTypeLabel) {
         String lieu = demande.getLieuPrincipal() != null ? demande.getLieuPrincipal() : "Non précisé";
 
         String medecinInfo = medecin != null
                 ? "Docteur %s %s – %s".formatted(medecin.getPrenom(), medecin.getNom(), medecin.getEmail())
                 : "Un professionnel de santé sera désigné prochainement";
 
-        // Formatage de la date (même format)
+        // Formatage de la date
         String dateSoumission = demande.getDateCreation()
                 .format(DATE_FORMATTER);
+
+        // Adapter le message selon le type d'utilisateur
+        String roleMessage = "ETUDIANT".equalsIgnoreCase(userTypeLabel)
+                ? "Votre dossier sera traité dans le respect de la confidentialité étudiante."
+                : "Votre demande en tant que membre du corps professoral sera traitée avec la considération appropriée.";
 
         String htmlBody = """
             <html>
@@ -210,15 +227,15 @@ public class EmailService {
                         <h3 style="color: #2c3e50; margin: 28px 0 12px; font-size: 18px;">Professionnel destinataire</h3>
                         <p style="margin: 0 0 24px;">%s</p>
                         
-                        <p>Le professionnel de santé concerné devrait prendre contact avec vous directement par email dans les meilleurs délais.</p>
-                        
                         <p style="font-style: italic; color: #555; background: #f8f9fa; padding: 12px 16px; border-left: 4px solid #0066cc; margin: 20px 0;">
-                            Les échanges qui suivront sont couverts par le secret médical.
+                            %s
                         </p>
+                        
+                        <p>Le professionnel de santé concerné devrait prendre contact avec vous directement par email dans les meilleurs délais.</p>
                         
                         <p>N’hésitez pas à nous contacter pour toute question ou précision supplémentaire.</p>
                         
-                        <p style="margin-top: 32px;">Veuillez agréer, cher(ère) étudiant(e), l’expression de nos salutations attentives.</p>
+                        <p style="margin-top: 32px;">Veuillez agréer, cher(ère) %s, l’expression de nos salutations attentives.</p>
                     </div>
                     
                     <!-- Footer -->
@@ -228,24 +245,31 @@ public class EmailService {
             </html>
             """.formatted(
                 logoCid,
-                demande.getEtudiantPrenom(), demande.getEtudiantNom(),
+                demande.getUserPrenom(), demande.getUserNom(),
                 demande.getTypeSituation(),
                 demande.getTypeSituation(),
                 demande.getDescription().replace("\n", "<br>"),
                 lieu,
                 demande.getPeriode(),
-                dateSoumission,                    // ← date formatée ici
+                dateSoumission,
                 medecinInfo,
+                roleMessage,
+                userTypeLabel.toLowerCase(),
                 getEmailFooterHtml()
         );
 
         String subject = "Confirmation de votre demande – " + demande.getTypeSituation();
 
         try {
-            sendHtmlEmail(etudiantEmail, subject, htmlBody);
-            log.info("Email de confirmation envoyé à : {}", etudiantEmail);
+            sendHtmlEmail(userEmail, subject, htmlBody);
+            log.info("Email de confirmation envoyé à {} ({})", userEmail, userTypeLabel);
         } catch (MessagingException e) {
-            log.error("Échec envoi email de confirmation à {} : {}", etudiantEmail, e.getMessage(), e);
+            log.error("Échec envoi email de confirmation à {} : {}", userEmail, e.getMessage(), e);
         }
+    }
+
+    // Méthode de rétrocompatibilité pour les étudiants uniquement
+    public void sendDemandeConfirmationToEtudiant(String etudiantEmail, DemandeResponse demande, User medecin) {
+        sendDemandeConfirmationToUser(etudiantEmail, demande, medecin, "Étudiant");
     }
 }

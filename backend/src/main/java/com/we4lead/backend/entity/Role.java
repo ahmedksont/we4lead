@@ -5,6 +5,7 @@ public enum Role {
     SUPER_ADMIN,
     ADMIN,
     MEDECIN,
-    ETUDIANT
+    ETUDIANT,
+    PROFESSEUR,
 
 }

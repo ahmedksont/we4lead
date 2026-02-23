@@ -35,29 +35,25 @@ public class DemandeService {
     }
 
     /**
-     * Crée une demande avec création automatique de l'étudiant s'il n'existe pas
-     * et envoie un email au médecin concerné
-     */
-    /**
-     * Crée une demande avec création automatique de l'étudiant s'il n'existe pas
+     * Crée une demande avec création automatique de l'utilisateur s'il n'existe pas
      * et envoie un email au médecin concerné
      */
     @Transactional
-    public DemandeResponse createDemandeWithStudent(DemandeWithStudentRequest request) {
+    public DemandeResponse createDemandeWithUser(DemandeWithStudentRequest request) {
         // Valider les champs obligatoires
         validateRequest(request);
 
-        // Récupérer l'université d'abord (nécessaire pour la création de l'étudiant)
+        // Récupérer l'université
         Universite universite = universiteRepository.findById(request.getUniversiteId())
                 .orElseThrow(() -> new IllegalArgumentException("Université non trouvée avec l'ID: " + request.getUniversiteId()));
 
-        // Récupérer ou créer l'étudiant (maintenant avec l'université)
-        User etudiant = getOrCreateStudent(request, universite);
+        // Récupérer ou créer l'utilisateur
+        User user = getOrCreateUser(request, universite);
 
-        // Vérifier que l'étudiant est associé à cette université (au cas où l'étudiant existait déjà)
-        if (!etudiant.getUniversites().contains(universite)) {
-            etudiant.getUniversites().add(universite);
-            userRepository.save(etudiant);
+        // Vérifier que l'utilisateur est associé à cette université
+        if (!user.getUniversites().contains(universite)) {
+            user.getUniversites().add(universite);
+            userRepository.save(user);
         }
 
         // Créer la demande
@@ -66,7 +62,7 @@ public class DemandeService {
         demande.setDescription(request.getDescription());
         demande.setLieuPrincipal(request.getLieuPrincipal());
         demande.setPeriode(request.getPeriode());
-        demande.setEtudiant(etudiant);
+        demande.setEtudiant(user); // L'utilisateur qui fait la demande
         demande.setUniversite(universite);
 
         User medecin = null;
@@ -87,55 +83,70 @@ public class DemandeService {
         DemandeResponse response = mapToResponse(savedDemande);
 
         // Envoyer les emails
-        sendEmails(response, etudiant, medecin, universite);
+        sendEmails(response, user, medecin, universite, request.getUserType());
 
         return response;
     }
 
     /**
-     * Récupère un étudiant par email ou le crée s'il n'existe pas
+     * Récupère un utilisateur par email ou le crée s'il n'existe pas
+     * selon le type d'utilisateur (ETUDIANT ou PROFESSEUR)
      */
-    private User getOrCreateStudent(DemandeWithStudentRequest request, Universite universite) {
+    private User getOrCreateUser(DemandeWithStudentRequest request, Universite universite) {
         return userRepository.findByEmail(request.getEmail())
                 .orElseGet(() -> {
-                    User newStudent = new User();
-                    newStudent.setId(UUID.randomUUID().toString());
-                    newStudent.setEmail(request.getEmail());
-                    newStudent.setNom(request.getNom());
-                    newStudent.setPrenom(request.getPrenom());
-                    newStudent.setTelephone(request.getTelephone());
-                    newStudent.setRole(Role.ETUDIANT);
-                    newStudent.setGenre(request.getGenre());
-                    newStudent.setSituation(request.getSituation());
-                    newStudent.setNiveauEtude(request.getNiveauEtude());
+                    User newUser = new User();
+                    newUser.setId(UUID.randomUUID().toString());
+                    newUser.setEmail(request.getEmail());
+                    newUser.setNom(request.getNom());
+                    newUser.setPrenom(request.getPrenom());
+                    newUser.setTelephone(request.getTelephone());
 
-                    // Associer l'université à l'étudiant
-                    newStudent.getUniversites().add(universite);
-                    newStudent.setUniversite(universite);
+                    // Déterminer le rôle en fonction du userType
+                    String userType = request.getUserType();
+                    if ("PROFESSEUR".equalsIgnoreCase(userType)) {
+                        newUser.setRole(Role.PROFESSEUR);
+                    } else {
+                        // Par défaut, ETUDIANT
+                        newUser.setRole(Role.ETUDIANT);
+                        newUser.setGenre(request.getGenre());
+                        newUser.setSituation(request.getSituation());
+                        newUser.setNiveauEtude(request.getNiveauEtude());
+                    }
 
-                    return userRepository.save(newStudent);
+                    // Associer l'université à l'utilisateur
+                    newUser.getUniversites().add(universite);
+                    newUser.setUniversite(universite);
+
+                    return userRepository.save(newUser);
                 });
     }
 
     /**
      * Envoie les emails de notification
      */
-    private void sendEmails(DemandeResponse demande, User etudiant, User medecin, Universite universite) {
-        // Formater les informations de l'étudiant pour l'email du médecin
-        String etudiantInfo = String.format("""
+    private void sendEmails(DemandeResponse demande, User user, User medecin, Universite universite, String userType) {
+        // Déterminer le libellé du type d'utilisateur
+        String userTypeLabel = "PROFESSEUR".equalsIgnoreCase(userType) ? "Professeur" : "Étudiant";
+
+        // Formater les informations de l'utilisateur pour l'email du médecin
+        String userInfo = String.format("""
+            Type : %s
             Nom complet : %s %s
             Email : %s
             Téléphone : %s
-            Niveau d'étude : %s
+            %s
             """,
-                etudiant.getPrenom(),
-                etudiant.getNom(),
-                etudiant.getEmail(),
-                etudiant.getTelephone() != null ? etudiant.getTelephone() : "Non renseigné",
-                etudiant.getNiveauEtude() != null ? etudiant.getNiveauEtude() : "Non renseigné"
+                userTypeLabel,
+                user.getPrenom(),
+                user.getNom(),
+                user.getEmail(),
+                user.getTelephone() != null ? user.getTelephone() : "Non renseigné",
+                "ETUDIANT".equalsIgnoreCase(userType) && user.getNiveauEtude() != null ?
+                        "Niveau d'étude : " + user.getNiveauEtude() : ""
         );
 
-        // Informations sur l'université de l'étudiant
+        // Informations sur l'université
         String universiteInfo = String.format("""
             Université : %s
             Ville : %s
@@ -147,41 +158,18 @@ public class DemandeService {
         // Envoyer l'email au médecin si un médecin est associé
         if (medecin != null) {
             try {
-                emailService.sendDemandeToMedecin(medecin, demande, etudiantInfo, universiteInfo);
+                emailService.sendDemandeToMedecin(medecin, demande, userInfo, universiteInfo);
             } catch (Exception e) {
-                // Log l'erreur mais ne pas bloquer la création
                 System.err.println("Erreur lors de l'envoi de l'email au médecin: " + e.getMessage());
             }
         }
 
-        // Envoyer un email de confirmation à l'étudiant
+        // Envoyer un email de confirmation à l'utilisateur
         try {
-            emailService.sendDemandeConfirmationToEtudiant(etudiant.getEmail(), demande, medecin);
+            emailService.sendDemandeConfirmationToUser(user.getEmail(), demande, medecin, userTypeLabel);
         } catch (Exception e) {
-            // Log l'erreur mais ne pas bloquer la création
             System.err.println("Erreur lors de l'envoi de l'email de confirmation: " + e.getMessage());
         }
-    }
-
-    /**
-     * Récupère un étudiant par email ou le crée s'il n'existe pas
-     */
-    private User getOrCreateStudent(DemandeWithStudentRequest request) {
-        return userRepository.findByEmail(request.getEmail())
-                .orElseGet(() -> {
-                    User newStudent = new User();
-                    newStudent.setId(UUID.randomUUID().toString());
-                    newStudent.setEmail(request.getEmail());
-                    newStudent.setNom(request.getNom());
-                    newStudent.setPrenom(request.getPrenom());
-                    newStudent.setTelephone(request.getTelephone());
-                    newStudent.setRole(Role.ETUDIANT);
-                    newStudent.setGenre(request.getGenre());
-                    newStudent.setSituation(request.getSituation());
-                    newStudent.setNiveauEtude(request.getNiveauEtude());
-
-                    return userRepository.save(newStudent);
-                });
     }
 
     /**
@@ -198,27 +186,35 @@ public class DemandeService {
             throw new IllegalArgumentException("La période est obligatoire");
         }
         if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-            throw new IllegalArgumentException("L'email de l'étudiant est obligatoire");
+            throw new IllegalArgumentException("L'email est obligatoire");
         }
         if (request.getNom() == null || request.getNom().trim().isEmpty()) {
-            throw new IllegalArgumentException("Le nom de l'étudiant est obligatoire");
+            throw new IllegalArgumentException("Le nom est obligatoire");
         }
         if (request.getPrenom() == null || request.getPrenom().trim().isEmpty()) {
-            throw new IllegalArgumentException("Le prénom de l'étudiant est obligatoire");
+            throw new IllegalArgumentException("Le prénom est obligatoire");
         }
         if (request.getUniversiteId() == null) {
             throw new IllegalArgumentException("L'ID de l'université est obligatoire");
         }
+
+        // Validation du userType
+        String userType = request.getUserType();
+        if (userType != null && !userType.isEmpty()) {
+            if (!"ETUDIANT".equalsIgnoreCase(userType) && !"PROFESSEUR".equalsIgnoreCase(userType)) {
+                throw new IllegalArgumentException("Le type d'utilisateur doit être 'ETUDIANT' ou 'PROFESSEUR'");
+            }
+        }
     }
 
     /**
-     * Récupère toutes les demandes d'un étudiant par son email
+     * Récupère toutes les demandes d'un utilisateur par son email
      */
-    public List<DemandeResponse> getDemandesByStudentEmail(String email) {
-        User etudiant = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Étudiant non trouvé avec l'email: " + email));
+    public List<DemandeResponse> getDemandesByUserEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé avec l'email: " + email));
 
-        return demandeRepository.findByEtudiantIdOrderByDateCreationDesc(etudiant.getId())
+        return demandeRepository.findByEtudiantIdOrderByDateCreationDesc(user.getId())
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -288,8 +284,8 @@ public class DemandeService {
     /**
      * Convertit une entité Demande en DTO DemandeResponse
      */
-    DemandeResponse mapToResponse(Demande demande) {
-        User etudiant = demande.getEtudiant();
+    public DemandeResponse mapToResponse(Demande demande) {
+        User user = demande.getEtudiant();
         User medecin = demande.getMedecin();
         Universite universite = demande.getUniversite();
 
@@ -305,12 +301,13 @@ public class DemandeService {
                 medecin != null ? medecin.getPrenom() : null,
                 medecin != null ? medecin.getSpecialite() : null,
                 medecin != null ? medecin.getEmail() : null,
-                etudiant.getId(),
-                etudiant.getNom(),
-                etudiant.getPrenom(),
-                etudiant.getEmail(),
-                etudiant.getTelephone(),
-                etudiant.getNiveauEtude(),
+                user.getId(),
+                user.getNom(),
+                user.getPrenom(),
+                user.getEmail(),
+                user.getTelephone(),
+                user.getNiveauEtude(),
+                user.getRole() != null ? user.getRole().toString() : "ETUDIANT", // Ajout du rôle
                 universite.getId(),
                 universite.getNom()
         );

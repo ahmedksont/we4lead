@@ -10,9 +10,12 @@ public class DemandeWithStudentRequest {
     private String description;
     private String lieuPrincipal;
     private String periode;
-    private String medecinId; // ID du médecin concerné (optionnel)
+    private String medecinId;
 
-    // Informations de l'étudiant (obligatoires)
+    // Nouveau champ pour distinguer le type d'utilisateur
+    private String userType; // "ETUDIANT" ou "PROFESSEUR"
+
+    // Informations de l'utilisateur
     private String email;
     private String nom;
     private String prenom;
@@ -21,7 +24,7 @@ public class DemandeWithStudentRequest {
     private Situation situation;
     private String niveauEtude;
 
-    // Université (obligatoire)
+    // Université
     private Long universiteId;
 
     // Getters et Setters
@@ -39,6 +42,10 @@ public class DemandeWithStudentRequest {
 
     public String getMedecinId() { return medecinId; }
     public void setMedecinId(String medecinId) { this.medecinId = medecinId; }
+
+    // Nouveau getter/setter
+    public String getUserType() { return userType; }
+    public void setUserType(String userType) { this.userType = userType; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }

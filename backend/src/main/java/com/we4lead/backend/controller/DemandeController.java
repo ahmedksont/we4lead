@@ -23,12 +23,14 @@ public class DemandeController {
     }
 
     /**
-     * Endpoint public pour créer une demande avec création automatique de l'étudiant
+     * Endpoint public pour créer une demande avec création automatique de l'utilisateur
+     * (étudiant ou professeur selon le champ userType)
      */
     @PostMapping("/public")
     public ResponseEntity<Map<String, Object>> createDemandePublic(@RequestBody DemandeWithStudentRequest request) {
         try {
-            DemandeResponse demande = demandeService.createDemandeWithStudent(request);
+            // Appel à la nouvelle méthode qui gère les deux types d'utilisateurs
+            DemandeResponse demande = demandeService.createDemandeWithUser(request);
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Demande créée avec succès");
@@ -43,12 +45,25 @@ public class DemandeController {
     }
 
     /**
-     * Récupère les demandes par email étudiant
+     * Récupère les demandes par email de l'utilisateur (étudiant ou professeur)
+     */
+    @GetMapping("/user/{email}")
+    public ResponseEntity<?> getDemandesByUserEmail(@PathVariable String email) {
+        try {
+            List<DemandeResponse> demandes = demandeService.getDemandesByUserEmail(email);
+            return ResponseEntity.ok(demandes);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Récupère les demandes par email étudiant (rétrocompatibilité)
      */
     @GetMapping("/etudiant/{email}")
     public ResponseEntity<?> getDemandesByStudentEmail(@PathVariable String email) {
         try {
-            List<DemandeResponse> demandes = demandeService.getDemandesByStudentEmail(email);
+            List<DemandeResponse> demandes = demandeService.getDemandesByUserEmail(email);
             return ResponseEntity.ok(demandes);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -155,6 +170,7 @@ public class DemandeController {
             return ResponseEntity.notFound().build();
         }
     }
+
     /**
      * Modifie une demande existante (PUT complet)
      * La description n'est pas modifiable

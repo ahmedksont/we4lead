@@ -11,20 +11,21 @@ public class DemandeResponse {
     private String periode;
     private LocalDateTime dateCreation;
 
-    // Informations sur le médecin (si présent)
+    // Informations sur le médecin
     private String medecinId;
     private String medecinNom;
     private String medecinPrenom;
     private String medecinSpecialite;
     private String medecinEmail;
 
-    // Informations sur l'étudiant
-    private String etudiantId;
-    private String etudiantNom;
-    private String etudiantPrenom;
-    private String etudiantEmail;
-    private String etudiantTelephone;
-    private String etudiantNiveauEtude;
+    // Informations sur l'utilisateur (étudiant ou professeur)
+    private String userId;
+    private String userNom;
+    private String userPrenom;
+    private String userEmail;
+    private String userTelephone;
+    private String userNiveauEtude;
+    private String userRole; // NOUVEAU: rôle de l'utilisateur
 
     // Informations sur l'université
     private Long universiteId;
@@ -34,8 +35,9 @@ public class DemandeResponse {
                            String lieuPrincipal, String periode, LocalDateTime dateCreation,
                            String medecinId, String medecinNom, String medecinPrenom,
                            String medecinSpecialite, String medecinEmail,
-                           String etudiantId, String etudiantNom, String etudiantPrenom,
-                           String etudiantEmail, String etudiantTelephone, String etudiantNiveauEtude,
+                           String userId, String userNom, String userPrenom,
+                           String userEmail, String userTelephone, String userNiveauEtude,
+                           String userRole, // NOUVEAU paramètre
                            Long universiteId, String universiteNom) {
         this.id = id;
         this.typeSituation = typeSituation;
@@ -48,12 +50,13 @@ public class DemandeResponse {
         this.medecinPrenom = medecinPrenom;
         this.medecinSpecialite = medecinSpecialite;
         this.medecinEmail = medecinEmail;
-        this.etudiantId = etudiantId;
-        this.etudiantNom = etudiantNom;
-        this.etudiantPrenom = etudiantPrenom;
-        this.etudiantEmail = etudiantEmail;
-        this.etudiantTelephone = etudiantTelephone;
-        this.etudiantNiveauEtude = etudiantNiveauEtude;
+        this.userId = userId;
+        this.userNom = userNom;
+        this.userPrenom = userPrenom;
+        this.userEmail = userEmail;
+        this.userTelephone = userTelephone;
+        this.userNiveauEtude = userNiveauEtude;
+        this.userRole = userRole; // NOUVEAU
         this.universiteId = universiteId;
         this.universiteNom = universiteNom;
     }
@@ -70,12 +73,13 @@ public class DemandeResponse {
     public String getMedecinPrenom() { return medecinPrenom; }
     public String getMedecinSpecialite() { return medecinSpecialite; }
     public String getMedecinEmail() { return medecinEmail; }
-    public String getEtudiantId() { return etudiantId; }
-    public String getEtudiantNom() { return etudiantNom; }
-    public String getEtudiantPrenom() { return etudiantPrenom; }
-    public String getEtudiantEmail() { return etudiantEmail; }
-    public String getEtudiantTelephone() { return etudiantTelephone; }
-    public String getEtudiantNiveauEtude() { return etudiantNiveauEtude; }
+    public String getUserId() { return userId; }
+    public String getUserNom() { return userNom; }
+    public String getUserPrenom() { return userPrenom; }
+    public String getUserEmail() { return userEmail; }
+    public String getUserTelephone() { return userTelephone; }
+    public String getUserNiveauEtude() { return userNiveauEtude; }
+    public String getUserRole() { return userRole; } // NOUVEAU getter
     public Long getUniversiteId() { return universiteId; }
     public String getUniversiteNom() { return universiteNom; }
 }
