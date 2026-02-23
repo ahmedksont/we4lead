@@ -106,6 +106,8 @@ public class DemandeService {
                     String userType = request.getUserType();
                     if ("PROFESSEUR".equalsIgnoreCase(userType)) {
                         newUser.setRole(Role.PROFESSEUR);
+                    } else if ("ADMIN".equalsIgnoreCase(userType)) {
+                        newUser.setRole(Role.SUPER_ADMIN);
                     } else {
                         // Par défaut, ETUDIANT
                         newUser.setRole(Role.ETUDIANT);
@@ -201,7 +203,7 @@ public class DemandeService {
         // Validation du userType
         String userType = request.getUserType();
         if (userType != null && !userType.isEmpty()) {
-            if (!"ETUDIANT".equalsIgnoreCase(userType) && !"PROFESSEUR".equalsIgnoreCase(userType)) {
+            if (!"ETUDIANT".equalsIgnoreCase(userType) && !"PROFESSEUR".equalsIgnoreCase(userType) && !"ADMIN".equalsIgnoreCase(userType)) {
                 throw new IllegalArgumentException("Le type d'utilisateur doit être 'ETUDIANT' ou 'PROFESSEUR'");
             }
         }
