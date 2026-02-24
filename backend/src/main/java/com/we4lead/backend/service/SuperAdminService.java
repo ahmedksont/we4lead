@@ -3,34 +3,49 @@ package com.we4lead.backend.service;
 import com.we4lead.backend.SupabaseAuthService;
 import com.we4lead.backend.dto.UniversiteRequest;
 import com.we4lead.backend.dto.UserCreateRequest;
+import com.we4lead.backend.dto.UserResponse;
+import com.we4lead.backend.dto.UniversiteResponse;
 import com.we4lead.backend.entity.Role;
 import com.we4lead.backend.entity.Universite;
 import com.we4lead.backend.entity.User;
 import com.we4lead.backend.Repository.UniversiteRepository;
 import com.we4lead.backend.Repository.UserRepository;
+import com.we4lead.backend.Repository.DemandeRepository; // AJOUT
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.HashMap;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class SuperAdminService {
 
     private final UserRepository userRepository;
     private final UniversiteRepository universiteRepository;
+    private final DemandeRepository demandeRepository; // AJOUT
+    private final UrlService urlService; // AJOUT
     private final String uploadDir = "uploads/universites";
     private final SupabaseAuthService supabaseAuthService;
 
-    public SuperAdminService(UserRepository userRepository, UniversiteRepository universiteRepository, SupabaseAuthService supabaseAuthService) {
+    public SuperAdminService(
+            UserRepository userRepository,
+            UniversiteRepository universiteRepository,
+            DemandeRepository demandeRepository, // AJOUT
+            UrlService urlService, // AJOUT
+            SupabaseAuthService supabaseAuthService) {
         this.userRepository = userRepository;
         this.universiteRepository = universiteRepository;
+        this.demandeRepository = demandeRepository;
+        this.urlService = urlService;
         this.supabaseAuthService = supabaseAuthService;
 
         Path path = Paths.get(uploadDir);
@@ -42,6 +57,8 @@ public class SuperAdminService {
             }
         }
     }
+
+    // ==================== UNIVERSITES CRUD ====================
 
     public Universite createUniversite(UniversiteRequest request) throws IOException {
         Universite uni = new Universite();
@@ -97,13 +114,14 @@ public class SuperAdminService {
         }
     }
 
+    // ==================== ADMINS CRUD ====================
+
     @Transactional
     public User createAdmin(UserCreateRequest request) {
         if (request.getUniversiteIds() == null || request.getUniversiteIds().isEmpty()) {
             throw new IllegalArgumentException("Au moins une université est obligatoire pour créer un admin");
         }
 
-        // Pour un admin, on prend la première université (relation ManyToOne)
         Universite universite = universiteRepository.findById(request.getUniversiteIds().get(0))
                 .orElseThrow(() -> new IllegalArgumentException("Université non trouvée : " + request.getUniversiteIds().get(0)));
 
@@ -156,5 +174,142 @@ public class SuperAdminService {
 
     public List<User> getAllAdmins() {
         return userRepository.findByRoleWithUniversity(Role.ADMIN);
+    }
+
+    // ==================== USERS CRUD AVEC NOMBRE DE DEMANDES ====================
+
+    /**
+     * Récupère tous les utilisateurs (tous rôles confondus)
+     */
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    /**
+     * Récupère tous les utilisateurs avec leurs universités
+     */
+    public List<User> getAllUsersWithUniversities() {
+        return userRepository.findAllWithUniversities();
+    }
+
+    public User getUserById(String id) {
+        return userRepository.findByIdWithUniversities(id)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'ID : " + id));
+    }
+
+    /**
+     * Récupère tous les utilisateurs avec leur nombre de demandes
+     */
+    public List<UserResponse> getAllUsersWithDemandesCount() {
+        List<User> users = userRepository.findAllWithUniversities();
+
+        // Récupérer tous les comptages en une seule requête optimisée
+        List<Object[]> counts = demandeRepository.countAllDemandesByUser();
+        Map<String, Long> demandesCountMap = counts.stream()
+                .collect(Collectors.toMap(
+                        arr -> (String) arr[0],
+                        arr -> (Long) arr[1]
+                ));
+
+        return users.stream()
+                .map(user -> mapToUserResponseWithDemandes(
+                        user,
+                        demandesCountMap.getOrDefault(user.getId(), 0L)
+                ))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère un utilisateur avec son nombre de demandes
+     */
+    public UserResponse getUserWithDemandesCount(String id) {
+        User user = userRepository.findByIdWithUniversities(id)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'ID : " + id));
+
+        long nombreDemandes = demandeRepository.countByEtudiantId(id);
+
+        return mapToUserResponseWithDemandes(user, nombreDemandes);
+    }
+
+    /**
+     * Récupère les utilisateurs par rôle avec leur nombre de demandes
+     */
+    public List<UserResponse> getUsersByRoleWithDemandesCount(Role role) {
+        List<User> users = userRepository.findByRoleWithUniversities(role);
+
+        List<String> userIds = users.stream()
+                .map(User::getId)
+                .collect(Collectors.toList());
+
+        // Créer une map finale pour les comptages
+        final Map<String, Long> demandesCountMap = new HashMap<>();
+
+        if (!userIds.isEmpty()) {
+            List<Object[]> counts = demandeRepository.countDemandesByUserIds(userIds);
+
+            // Remplir la map sans utiliser de lambda qui modifie une variable externe
+            for (Object[] count : counts) {
+                String userId = (String) count[0];
+                Long nombre = (Long) count[1];
+                demandesCountMap.put(userId, nombre);
+            }
+        }
+
+        return users.stream()
+                .map(user -> mapToUserResponseWithDemandes(
+                        user,
+                        demandesCountMap.getOrDefault(user.getId(), 0L)
+                ))
+                .collect(Collectors.toList());
+    }
+    /**
+     * Convertit un User en UserResponse avec le nombre de demandes
+     */
+    private UserResponse mapToUserResponseWithDemandes(User user, long nombreDemandes) {
+        UniversiteResponse universiteResponse = null;
+        if (user.getUniversite() != null) {
+            universiteResponse = new UniversiteResponse(
+                    user.getUniversite().getId(),
+                    user.getUniversite().getNom(),
+                    user.getUniversite().getVille(),
+                    user.getUniversite().getAdresse(),
+                    user.getUniversite().getTelephone(),
+                    user.getUniversite().getNbEtudiants(),
+                    user.getUniversite().getHoraire(),
+                    urlService.getUniversiteLogoUrl(user.getUniversite().getLogoPath()),
+                    user.getUniversite().getCode()
+            );
+        }
+
+        List<UniversiteResponse> universitesResponses = user.getUniversites().stream()
+                .map(u -> new UniversiteResponse(
+                        u.getId(),
+                        u.getNom(),
+                        u.getVille(),
+                        u.getAdresse(),
+                        u.getTelephone(),
+                        u.getNbEtudiants(),
+                        u.getHoraire(),
+                        urlService.getUniversiteLogoUrl(u.getLogoPath()),
+                        u.getCode()
+                ))
+                .collect(Collectors.toList());
+
+        return new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getNom(),
+                user.getPrenom(),
+                user.getTelephone(),
+                user.getRole(),
+                urlService.getPhotoUrl(user.getPhotoPath()),
+                user.getSpecialite(),
+                user.getGenre(),
+                user.getSituation(),
+                user.getNiveauEtude(),
+                universiteResponse,
+                universitesResponses,
+                nombreDemandes
+        );
     }
 }

@@ -48,5 +48,10 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     // ✅ CORRECTION 4: Vérifier si un email existe déjà
     boolean existsByEmail(String email);
-    
+
+
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.universites")
+    List<User> findAllWithUniversities();
+
+
 }
