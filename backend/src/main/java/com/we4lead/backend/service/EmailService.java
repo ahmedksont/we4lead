@@ -183,7 +183,7 @@ public class EmailService {
         String lieu = demande.getLieuPrincipal() != null ? demande.getLieuPrincipal() : "Non précisé";
 
         String medecinInfo = medecin != null
-                ? "Docteur %s %s – %s".formatted(medecin.getPrenom(), medecin.getNom(), medecin.getEmail())
+                ? "Docteur %s %s – %s".formatted(medecin.getPrenom(), medecin.getNom())
                 : "Un professionnel de santé sera désigné prochainement";
 
         // Formatage de la date
