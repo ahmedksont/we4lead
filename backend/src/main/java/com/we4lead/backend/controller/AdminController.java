@@ -124,10 +124,51 @@ public class AdminController {
     @PutMapping(value = "/medecins/{id}", consumes = {"multipart/form-data"})
     public User updateMedecin(
             @PathVariable String id,
-            @ModelAttribute UserCreateRequest request
+            @ModelAttribute MedecinUpdateRequest request
     ) throws IOException {
-        return adminService.updateMedecin(id, request);
+
+        // Créer le DTO pour le service
+        UserCreateRequest userRequest = new UserCreateRequest();
+
+        // Remplir les champs
+        userRequest.setNom(request.getNom());
+        userRequest.setPrenom(request.getPrenom());
+        userRequest.setEmail(request.getEmail());
+        userRequest.setTelephone(request.getTelephone());
+        userRequest.setSpecialite(request.getSpecialite());
+
+        // Gérer le genre
+        if (request.getGenre() != null && !request.getGenre().isEmpty()) {
+            try {
+                userRequest.setGenre(Genre.valueOf(request.getGenre()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Genre invalide. Utilisez HOMME ou FEMME");
+            }
+        }
+
+        // Gérer la situation
+        if (request.getSituation() != null && !request.getSituation().isEmpty()) {
+            try {
+                userRequest.setSituation(Situation.valueOf(request.getSituation()));
+            } catch (IllegalArgumentException e) {
+                // Optionnel, on peut ignorer si la valeur n'est pas dans l'enum
+            }
+        }
+
+        // Parser les universiteIds
+        if (request.getUniversiteIds() != null && !request.getUniversiteIds().isEmpty()) {
+            List<Long> universiteIds = parseUniversiteIds(request.getUniversiteIds());
+            userRequest.setUniversiteIds(universiteIds);
+        }
+
+        // Ajouter la photo si présente
+        userRequest.setPhoto(request.getPhoto());
+
+        return adminService.updateMedecin(id, userRequest);
     }
+
+
+
 
     @DeleteMapping("/medecins/{id}")
     public void deleteMedecin(
