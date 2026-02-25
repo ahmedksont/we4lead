@@ -211,7 +211,7 @@ public class EmailService {
                     
                     <!-- Contenu principal -->
                     <div style="padding: 32px 32px 24px;">
-                        <h2 style="color: #1a3c5e; margin-top: 0; font-size: 22px;">Cher(ère) %s %s,</h2>
+                        <h2 style="color: #1a3c5e; margin-top: 0; font-size: 22px;">Cher(ère) Patient(e),</h2>
                         
                         <p>Nous avons bien reçu votre demande concernant une situation de type « %s ».</p>
                         
