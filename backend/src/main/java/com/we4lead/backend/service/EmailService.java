@@ -183,7 +183,7 @@ public class EmailService {
         String lieu = demande.getLieuPrincipal() != null ? demande.getLieuPrincipal() : "Non précisé";
 
         String medecinInfo = medecin != null
-                ? "Docteur %s %s ".formatted(medecin.getPrenom(), medecin.getNom())
+                ? "Docteur %s %s".formatted(medecin.getPrenom(), medecin.getNom())
                 : "Un professionnel de santé sera désigné prochainement";
 
         // Formatage de la date
@@ -196,66 +196,65 @@ public class EmailService {
                 : "Votre demande en tant que membre du corps professoral sera traitée avec la considération appropriée.";
 
         String htmlBody = """
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            </head>
-            <body style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
-                <div style="max-width: 620px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                    
-                    <!-- Header avec logo -->
-                    <div style="background: #f8f9fa; padding: 24px 32px; text-align: center; border-bottom: 1px solid #eee;">
-                        <img src="cid:%s" alt="We4Lead" style="max-width: 180px; height: auto; display: block; margin: 0 auto;">
-                    </div>
-                    
-                    <!-- Contenu principal -->
-                    <div style="padding: 32px 32px 24px;">
-                        <h2 style="color: #1a3c5e; margin-top: 0; font-size: 22px;">Cher(ère) Patient(e),</h2>
-                        
-                        <p>Nous avons bien reçu votre demande concernant une situation de type « %s ».</p>
-                        
-                        <h3 style="color: #2c3e50; margin: 28px 0 12px; font-size: 18px;">Récapitulatif de votre demande</h3>
-                        <table style="width:100%%; border-collapse: collapse;">
-                            <tr><td style="padding:6px 0; font-weight:bold; width:180px;">Type de situation :</td><td>%s</td></tr>
-                            <tr><td style="padding:6px 0; font-weight:bold;">Description :</td><td>%s</td></tr>
-                            <tr><td style="padding:6px 0; font-weight:bold;">Lieu principal :</td><td>%s</td></tr>
-                            <tr><td style="padding:6px 0; font-weight:bold;">Période concernée :</td><td>%s</td></tr>
-                            <tr><td style="padding:6px 0; font-weight:bold;">Date de soumission :</td><td>%s</td></tr>
-                        </table>
-                        
-                        <h3 style="color: #2c3e50; margin: 28px 0 12px; font-size: 18px;">Professionnel destinataire</h3>
-                        <p style="margin: 0 0 24px;">%s</p>
-                        
-                        <p style="font-style: italic; color: #555; background: #f8f9fa; padding: 12px 16px; border-left: 4px solid #0066cc; margin: 20px 0;">
-                            %s
-                        </p>
-                        
-                        <p>Le professionnel de santé concerné devrait prendre contact avec vous directement par email dans les meilleurs délais.</p>
-                        
-                        <p>N’hésitez pas à nous contacter pour toute question ou précision supplémentaire.</p>
-                        
-                        <p style="margin-top: 32px;">Veuillez agréer, cher(ère) %s, l’expression de nos salutations attentives.</p>
-                    </div>
-                    
-                    <!-- Footer -->
-                    %s
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+            <div style="max-width: 620px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                
+                <!-- Header avec logo -->
+                <div style="background: #f8f9fa; padding: 24px 32px; text-align: center; border-bottom: 1px solid #eee;">
+                    <img src="cid:%s" alt="We4Lead" style="max-width: 180px; height: auto; display: block; margin: 0 auto;">
                 </div>
-            </body>
-            </html>
-            """.formatted(
-                logoCid,
-                demande.getUserPrenom(), demande.getUserNom(),
-                demande.getTypeSituation(),
-                demande.getTypeSituation(),
-                demande.getDescription().replace("\n", "<br>"),
-                lieu,
-                demande.getPeriode(),
-                dateSoumission,
-                medecinInfo,
-                roleMessage,
-                userTypeLabel.toLowerCase(),
-                getEmailFooterHtml()
+                
+                <!-- Contenu principal -->
+                <div style="padding: 32px 32px 24px;">
+                    <h2 style="color: #1a3c5e; margin-top: 0; font-size: 22px;">Cher(ère) Patient(e),</h2>
+                    
+                    <p>Nous avons bien reçu votre demande concernant une situation de type « %s ».</p>
+                    
+                    <h3 style="color: #2c3e50; margin: 28px 0 12px; font-size: 18px;">Récapitulatif de votre demande</h3>
+                    <table style="width:100%%; border-collapse: collapse;">
+                        <tr><td style="padding:6px 0; font-weight:bold; width:180px;">Type de situation :</td><td>%s</td></tr>
+                        <tr><td style="padding:6px 0; font-weight:bold;">Description :</td><td>%s</td></tr>
+                        <tr><td style="padding:6px 0; font-weight:bold;">Lieu principal :</td><td>%s</td></tr>
+                        <tr><td style="padding:6px 0; font-weight:bold;">Période concernée :</td><td>%s</td></tr>
+                        <tr><td style="padding:6px 0; font-weight:bold;">Date de soumission :</td><td>%s</td></tr>
+                    </table>
+                    
+                    <h3 style="color: #2c3e50; margin: 28px 0 12px; font-size: 18px;">Professionnel destinataire</h3>
+                    <p style="margin: 0 0 24px;">%s</p>
+                    
+                    <p style="font-style: italic; color: #555; background: #f8f9fa; padding: 12px 16px; border-left: 4px solid #0066cc; margin: 20px 0;">
+                        %s
+                    </p>
+                    
+                    <p>Le professionnel de santé concerné devrait prendre contact avec vous directement par email dans les meilleurs délais.</p>
+                    
+                    <p>N’hésitez pas à nous contacter pour toute question ou précision supplémentaire.</p>
+                    
+                    <p style="margin-top: 32px;">Veuillez agréer, cher(ère) %s, l’expression de nos salutations attentives.</p>
+                </div>
+                
+                <!-- Footer -->
+                %s
+            </div>
+        </body>
+        </html>
+        """.formatted(
+                logoCid,                                    // 1
+                demande.getTypeSituation(),                 // 2  → « %s »
+                demande.getTypeSituation(),                 // 3  → table
+                demande.getDescription().replace("\n", "<br>"), // 4
+                lieu,                                       // 5
+                demande.getPeriode(),                       // 6
+                dateSoumission,                             // 7
+                medecinInfo,                                // 8  → Professionnel destinataire
+                roleMessage,                                // 9  → italic block (this was shifted before)
+                userTypeLabel.toLowerCase(),                // 10 → cher(ère) %s
+                getEmailFooterHtml()                        // 11 → footer
         );
 
         String subject = "Confirmation de votre demande – " + demande.getTypeSituation();
